@@ -26,5 +26,53 @@ int main() {
      printf("Игра 'Веселый фермер' запущена!\n");
      printf("Начальное время: День %d, %02d:00\n", current_day, current_hour);
 
+     int choose;
+     
+     do {
+          printf("\n    МЕНЮ   \n");
+          printf("[0] Выход\n");
+          printf("[1] Посмотреть на часы\n");
+          printf("[2] Промотать время\n");
+          printf("[3] Посмотреть инвентарь\n");
+          printf("[4] Положить предмет в слот\n");
+          printf("[5] Выбросить предмет\n");
+          printf("[6] Выполнить задание по варианту\n");
+          printf("Выберите пункт: "); 
+     }  while (choose = !0);
+
+     if (scanf("%d", &choose) != 1) {
+      printf("Ошибка ввода! Введите число.\n");
+      while (getchar() != '\n'); 
+      choose = -1; 
+     }
+
+
+     switch (choose) {
+    case 0:
+        printf("Выход из игры...\n");
+        break; // break прерывает switch, а условие while прервет цикл
+        
+    case 1:
+        printf("Пункт 1: Часы (в разработке)\n");
+        break;
+        
+    case 2:
+        printf("Пункт 2: Время (в разработке)\n");
+        break;
+    case 3:
+        printf("Пункт 3: Время (в разработке)\n");
+        break;  
+    case 4:
+        printf("Пункт 4: Время (в разработке)\n");
+        break;
+   case 5:
+        printf("Пункт 5: Время (в разработке)\n");
+        break;
+     
+    
+    default:
+        printf("Неверный пункт меню!\n");
+        break;
+}
      return 0;
 }
