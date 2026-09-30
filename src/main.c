@@ -52,7 +52,8 @@ int main() {
      
      if (scanf("%d", &choose) != 1) {
       printf("Ошибка ввода! Введите число.\n");
-      while (getchar() != '\n'); 
+      int c;
+      while ((c = getchar()) != '\n' && c != EOF); 
       choose = -1; 
      }
 
@@ -68,12 +69,24 @@ int main() {
         
     case 2: {
         int hours_worked;
-        printf("Сколько ты часов играл: ");
-        scanf("%d", &hours_worked);
+        printf("Сколько ты часов играл: "); 
+    do {
+        printf("Введите количество отработанных часов: ");
+        if (scanf("%d", &hours_worked) != 1) {
+        printf("Ошибка! Нужно ввести число.\n");
+        while (getchar() != '\n'); 
+        hours_worked = 0; 
+        continue;
+    }
+        if (hours_worked <= 0) {
+        printf("Это число не подходит, введите положительное число.\n");
+    }
+       } while (hours_worked <= 0); // Цикл повторяется, пока число <= 0
+
         current_hour += hours_worked;
         current_day += current_hour / HOURS_IN_DAY;
         current_hour = current_hour % HOURS_IN_DAY;
-        printf("Текущее время: День %d, %02d:00",current_day,current_hour);
+        printf("Текущее время: День %d, %02d:00\n", current_day, current_hour);
         break;
     }
     case 3:
@@ -82,24 +95,52 @@ int main() {
         }
         break;  
     case 4:
+    do {
         printf("Введите ID предмета: ");
-        scanf("%d", &item_id);
-        printf("Введите номер слота: ");
-        scanf("%d", &slot_index);
-        if (slot_index >= 0 && slot_index < INVENTORY_SIZE) {
-            inventory[slot_index] = item_id;
-            printf("Предмет %d добавлен в слот %d\n", item_id, slot_index);       
-        } else {
-            printf("Неверный индекс слота!");
+        if (scanf("%d", &item_id) != 1) {
+            printf("Ошибка! Нужно ввести число.\n");
+            while (getchar() != '\n'); 
+            item_id = -1; 
+            continue;     
         }
-        break;
+        if (item_id < 0 || item_id > INVENTORY_SIZE) {
+            printf("Неверный ID предмета, введите верный ID\n");
+        }
+        
+    } while (item_id < 0 || item_id > INVENTORY_SIZE);
+    do {
+        printf("Введите номер слота ");
+        
+        if (scanf("%d", &slot_index) != 1) {
+            printf("Ошибка! Нужно ввести число.\n");
+            while (getchar() != '\n'); // Очищаем буфер
+            slot_index = -1; // Делаем слот неверным
+            continue;
+        }
+
+        if (slot_index < 0 || slot_index >= INVENTORY_SIZE) {
+            printf("Неверный индекс слота! Попробуйте снова.\n");
+        }
+    } while (slot_index < 0 || slot_index >= INVENTORY_SIZE);
+    inventory[slot_index] = item_id;
+    printf("Предмет %d добавлен в слот %d\n", item_id, slot_index);
+    break;
    case 5:
-        printf("Введите индекс слота -  ");
-        scanf("%d",slot_index);
-        if (slot_index >= 0 && slot_index < INVENTORY_SIZE) {
-            inventory[slot_index] = 0;
-            printf("Предмет из слота %d выброшен\n", slot_index);
-        }
+        scanf("%d",&slot_index);
+        do {
+           printf("Введите индекс слота -  ");
+           if (scanf("%d", &slot_index) != 1) {
+                printf("Ошибка! Нужно ввести число.\n");
+                while (getchar() != '\n');
+                slot_index = -1; 
+                continue;
+            }
+            if (slot_index < 0 || slot_index >= INVENTORY_SIZE) { 
+            printf("Неверный индекс слота! Попробуйте снова.\n");
+            }
+        }  while (slot_index < 0 || slot_index >= INVENTORY_SIZE);
+        inventory[slot_index] = 0;
+        printf("Предмет из слота %d выброшен\n", slot_index);
         break;
    case 6:
         printf("    Инвентарь ДО инверсии   \n");
