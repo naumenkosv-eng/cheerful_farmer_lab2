@@ -12,6 +12,10 @@
 #define ITEM_SEEDS 3
 #define ITEM_CARROT 4
 #define ITEM_WATER 5
+#define ITEM_APPLE 6     
+#define ITEM_HAY 7     
+#define ITEM_AXE 8       
+#define ITEM_RAKE 9  
 
 int main() {
      setlocale(LC_ALL, "ru_RU.UTF-8");
@@ -20,10 +24,15 @@ int main() {
      int inventory[INVENTORY_SIZE] = {0};
  
      inventory[0] = ITEM_EMPTY;
-     inventory[1] = ITEM_STONE;
-     inventory[2] = ITEM_SEEDS;
-     inventory[8] = ITEM_CARROT;
-     inventory[9] = ITEM_WATER;
+     inventory[1] = ITEM_WOOD;
+     inventory[2] = ITEM_STONE;
+     inventory[3] = ITEM_SEEDS;
+     inventory[4] = ITEM_CARROT;
+     inventory[5] = ITEM_WATER;
+     inventory[6] = ITEM_APPLE;
+     inventory[7] = ITEM_HAY;
+     inventory[8] = ITEM_AXE;
+     inventory[9] = ITEM_RAKE;
 
      printf("Игра 'Веселый фермер' запущена!\n");
      printf("Начальное время: День %d, %02d:00\n", current_day, current_hour);
@@ -91,8 +100,23 @@ int main() {
             inventory[slot_index] = 0;
             printf("Предмет из слота %d выброшен\n", slot_index);
         }
-
         break;
+   case 6:
+        printf("    Инвентарь ДО инверсии   \n");
+        for (int i = 0; i < INVENTORY_SIZE; i++) {
+            printf("Слот %d: [%d]\n", i, inventory[i]);
+        }
+        int temp; 
+        for (int i = 0, j = INVENTORY_SIZE - 1; i < j; i++, j--) {
+        temp = inventory[i];
+        inventory[i] = inventory[j];
+        inventory[j] = temp;
+        }
+        printf("\n  Инвентарь ПОСЛЕ инверсии  \n");
+        for (int i = 0; i < INVENTORY_SIZE; i++) {
+            printf("Слот %d: [%d]\n", i, inventory[i]);
+        }
+    break;
 
     default:
         printf("Неверный пункт меню!\n");
