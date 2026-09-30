@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <locale.h>
 
 #define INVENTORY_SIZE 10
 #define HOURS_IN_DAY 24
@@ -13,6 +14,7 @@
 #define ITEM_WATER 5
 
 int main() {
+     setlocale(LC_ALL, "ru_RU.UTF-8");
      int current_day = START_DAY;
      int current_hour = START_HOUR;
      int inventory[INVENTORY_SIZE] = {0};
@@ -38,41 +40,65 @@ int main() {
           printf("[5] Выбросить предмет\n");
           printf("[6] Выполнить задание по варианту\n");
           printf("Выберите пункт: "); 
-     }  while (choose = !0);
-
+     
      if (scanf("%d", &choose) != 1) {
       printf("Ошибка ввода! Введите число.\n");
       while (getchar() != '\n'); 
       choose = -1; 
      }
 
-
+    int slot_index, item_id;
      switch (choose) {
     case 0:
         printf("Выход из игры...\n");
-        break; // break прерывает switch, а условие while прервет цикл
+        break; 
         
     case 1:
-        printf("Пункт 1: Часы (в разработке)\n");
+        printf("Текущее время: День %d, %02d:00\n", current_day, current_hour);
         break;
         
-    case 2:
-        printf("Пункт 2: Время (в разработке)\n");
+    case 2: {
+        int hours_worked;
+        printf("Сколько ты часов играл: ");
+        scanf("%d", &hours_worked);
+        current_hour += hours_worked;
+        current_day += current_hour / HOURS_IN_DAY;
+        current_hour = current_hour % HOURS_IN_DAY;
+        printf("Текущее время: День %d, %02d:00",current_day,current_hour);
         break;
+    }
     case 3:
-        printf("Пункт 3: Время (в разработке)\n");
+        for (int i = 0; i < INVENTORY_SIZE; i++) {
+            printf("Слот %d: [%d]\n", i, inventory[i]);
+        }
         break;  
     case 4:
-        printf("Пункт 4: Время (в разработке)\n");
+        printf("Введите ID предмета: ");
+        scanf("%d", &item_id);
+        printf("Введите номер слота: ");
+        scanf("%d", &slot_index);
+        if (slot_index >= 0 && slot_index < INVENTORY_SIZE) {
+            inventory[slot_index] = item_id;
+            printf("Предмет %d добавлен в слот %d\n", item_id, slot_index);       
+        } else {
+            printf("Неверный индекс слота!");
+        }
         break;
    case 5:
-        printf("Пункт 5: Время (в разработке)\n");
+        printf("Введите индекс слота -  ");
+        scanf("%d",slot_index);
+        if (slot_index >= 0 && slot_index < INVENTORY_SIZE) {
+            inventory[slot_index] = 0;
+            printf("Предмет из слота %d выброшен\n", slot_index);
+        }
+
         break;
-     
-    
+
     default:
         printf("Неверный пункт меню!\n");
         break;
 }
+    }  while (choose != 0);
+
      return 0;
 }
