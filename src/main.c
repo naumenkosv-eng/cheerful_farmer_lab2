@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <locale.h>
+#include <string.h>
 
 #define INVENTORY_SIZE 10
 #define HOURS_IN_DAY 24
@@ -55,13 +56,45 @@ int read_int_from_user(const char* prompt) {
     
     return num;
 }
+ 
+void load_item_names(char item_names[INVENTORY_SIZE][32]) {
+    FILE *file = fopen("items.txt", "r");
+    if (file == NULL) {
+        printf("Предупреждение: файл items.txt не найден! Используются стандартные названия.\n");
+        strcpy(item_names[0], "Пусто");
+        strcpy(item_names[1], "Дерево");
+        strcpy(item_names[2], "Камень");
+        strcpy(item_names[3], "Семена");
+        strcpy(item_names[4], "Морковь");
+        strcpy(item_names[5], "Вода");
+        strcpy(item_names[6], "Яблоко");
+        strcpy(item_names[7], "Сено");
+        strcpy(item_names[8], "Топор");
+        strcpy(item_names[9], "Грабли");
+        return;
+    }
+    for (int i = 0; i < INVENTORY_SIZE; i++) {
+        fgets(item_names[i], 32, file);
+        for (int j = 0; item_names[i][j] != '\0'; j++) {
+            if (item_names[i][j] == '\n') {
+                item_names[i][j] = '\0';
+                break;
+            }
+        }
+    }
+    
+    fclose(file);
+}
 
 
-int main() {
+int main() { 
      setlocale(LC_ALL, "ru_RU.UTF-8");
      int current_day = START_DAY;
      int current_hour = START_HOUR;
      int inventory[INVENTORY_SIZE] = {0};
+     char farmer_name[33];
+     char item_names[INVENTORY_SIZE][32]; 
+     
  
      inventory[0] = ITEM_EMPTY;
      inventory[1] = ITEM_WOOD;
@@ -76,8 +109,19 @@ int main() {
 
      printf("Игра 'Веселый фермер' запущена!\n");
      printf("Начальное время: День %d, %02d:00\n", current_day, current_hour);
+     printf("Как вас зовут, фермер? \n");
+     fgets(farmer_name, sizeof(farmer_name), stdin);
+     for (int i = 0; farmer_name[i] != '\0'; i++) {
+        if (farmer_name[i] == '\n') {
+        farmer_name[i] = '\0';
+        break;
+       }
+     }
+    printf("Добро пожаловать, %s!\n", farmer_name);
+    load_item_names(item_names); 
 
-     int choose;
+     
+    int choose;
      
      do {
           printf("\n    МЕНЮ   \n");
@@ -125,7 +169,7 @@ int main() {
     }
     case 3:
         for (int i = 0; i < INVENTORY_SIZE; i++) {
-        printf("Слот %d: [%d] %s\n", i, inventory[i], GET_ITEM_NAME(inventory[i]));
+        printf("Слот %d: [%d] %s\n", i, inventory[i], item_names[inventory[i]]);
         }
         break;  
     case 4:
