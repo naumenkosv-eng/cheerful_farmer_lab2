@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <locale.h>
 #include <string.h>
+#include <stdlib.h>
 
 #define INVENTORY_SIZE 10
 #define HOURS_IN_DAY 24
@@ -42,17 +43,26 @@
      (item_id) == ITEM_RAKE   ? ITEM_NAME_RAKE   : \
      "Неизвестный предмет")
 
+void remove_newline(char *str) {
+    for (int i = 0; str[i] != '\0'; i++) {
+        if (str[i] == '\n' ||  str[i] == '\r')  {
+            str[i] = '\0';
+            break;
+        }
+    }
+}
+
 int read_int_from_user(const char* prompt) {
     int num;
     int valid_input;
-    do {
+     do {
         printf("%s", prompt);
         valid_input = (scanf("%d", &num) == 1);
-        if (!valid_input) {
+       if (!valid_input) {
             printf("Ошибка! Нужно ввести число.\n");
             while (getchar() != '\n');
-        }
-    } while (!valid_input);
+            }
+     } while (!valid_input);
     
     return num;
 }
@@ -75,12 +85,7 @@ void load_item_names(char item_names[INVENTORY_SIZE][32]) {
     }
     for (int i = 0; i < INVENTORY_SIZE; i++) {
         fgets(item_names[i], 32, file);
-        for (int j = 0; item_names[i][j] != '\0'; j++) {
-            if (item_names[i][j] == '\n') {
-                item_names[i][j] = '\0';
-                break;
-            }
-        }
+        remove_newline(item_names[i]);
     }
     
     fclose(file);
@@ -89,6 +94,7 @@ void load_item_names(char item_names[INVENTORY_SIZE][32]) {
 
 int main() { 
      setlocale(LC_ALL, "ru_RU.UTF-8");
+     system("chcp 65001 > nul");
      int current_day = START_DAY;
      int current_hour = START_HOUR;
      int inventory[INVENTORY_SIZE] = {0};
@@ -111,13 +117,8 @@ int main() {
      printf("Начальное время: День %d, %02d:00\n", current_day, current_hour);
      printf("Как вас зовут, фермер? \n");
      fgets(farmer_name, sizeof(farmer_name), stdin);
-     for (int i = 0; farmer_name[i] != '\0'; i++) {
-        if (farmer_name[i] == '\n') {
-        farmer_name[i] = '\0';
-        break;
-       }
-     }
-    printf("Добро пожаловать, %s!\n", farmer_name);
+     remove_newline(farmer_name);
+     printf("Добро пожаловать, %s!\n", farmer_name);
     load_item_names(item_names); 
 
      
@@ -132,6 +133,8 @@ int main() {
           printf("[4] Положить предмет в слот\n");
           printf("[5] Выбросить предмет\n");
           printf("[6] Выполнить задание по варианту\n");
+          printf("[7] Поиск предмета в рюкзаке\n");
+          printf("[8] Записать состояние в дневник\n");
           printf("Выберите пункт: "); 
      
      if (scanf("%d", &choose) != 1) {
@@ -169,7 +172,7 @@ int main() {
     }
     case 3:
         for (int i = 0; i < INVENTORY_SIZE; i++) {
-        printf("Слот %d: [%d] %s\n", i, inventory[i], item_names[inventory[i]]);
+        printf("Слот %d: [%d] - %s\n", i, inventory[i], item_names[inventory[i]]);
         }
         break;  
     case 4:
@@ -217,7 +220,52 @@ int main() {
             printf("Слот %d: [%d] %s\n", i, inventory[i], GET_ITEM_NAME(inventory[i]));
         }
     break;
-
+   case 7:
+        char search_name[32];
+        while (getchar() != '\n');
+        printf("Введите название предмета для поиска: ");
+        fgets(search_name, sizeof(search_name), stdin);
+        remove_newline(search_name);
+        int found_id = -1; 
+        for (int i = 0; i < INVENTORY_SIZE; i++) {
+        if (strcmp(item_names[i], search_name) == 0) { 
+        found_id = i;
+        break;
+        }
+        }
+        if (found_id == -1) {
+            printf("Предмет не найден");
+            break;
+        }
+        printf("Предмет '%s' (ID: %d) найден в следующих слотах:\n", search_name, found_id);
+        int found_in_inventory = 0;
+        for (int i = 0; i < INVENTORY_SIZE; i++) {
+        if (inventory[i] == found_id) {
+            printf("Слот %d\n", i);
+        found_in_inventory = 1;
+        }
+    }
+        if (!found_in_inventory) {
+            printf("Предмет есть в каталоге, но отсутствует в инвентаре.\n");
+        }
+        break;
+   case 8: {
+        FILE *diary = fopen("diary.txt", "a");
+        if (diary == NULL) {
+            printf("Ошибка: не удалось открыть diary.txt для записи!\n");
+        }
+        fprintf(diary, "    Дневник фермера %s    \n", farmer_name);
+        fprintf(diary, "День: %d, Время: %02d:00\n", current_day, current_hour);
+        fprintf(diary, "Инвентарь:\n");
+        for (int i = 0; i < INVENTORY_SIZE; i++) {
+            fprintf(diary, "  Слот %d: %s\n", i, item_names[inventory[i]]);
+        }
+        fprintf(diary, "==========================\n\n");
+        fclose(diary);
+        printf("Запись успешно добавлена в diary.txt!\n");
+        break;
+    }
+        break;
     default:
         printf("Неверный пункт меню!\n");
         break;
