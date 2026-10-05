@@ -273,88 +273,65 @@ int main() {
         printf("Запись успешно добавлена в diary.txt!\n");
         break;
     }
-                case 9: {
-                char search_word[64];
-                char search_word_cap[64];
-                char line[256];
-                char result[512]; // Увеличенный буфер для новой строки
-                int line_number = 0;
-                int found_count = 0;
-
-                while (getchar() != '\n');
-                printf("Введите поисковое слово: ");
-                fgets(search_word, sizeof(search_word), stdin);
-                remove_newline(search_word);
-
-                // Создаём вариант с заглавной первой буквой (UTF-8 кириллица)
-                strcpy(search_word_cap, search_word);
-                int sw_len = strlen(search_word_cap);
-                if (sw_len >= 2 && (unsigned char)search_word_cap[0] == 0xD0 &&
-                    (unsigned char)search_word_cap[1] >= 0xB0 && (unsigned char)search_word_cap[1] <= 0xBF) {
-                    search_word_cap[1] -= 0x20;
-                } else if (sw_len >= 2 && (unsigned char)search_word_cap[0] == 0xD1 &&
-                           (unsigned char)search_word_cap[1] >= 0x80 && (unsigned char)search_word_cap[1] <= 0x8F) {
-                    search_word_cap[0] = 0xD0;
-                    search_word_cap[1] += 0x10;
-                }
-
-                FILE *input = open_file_for_reading("input.txt");
-                if (input == NULL) {
-                    break;
-                }
-
-                FILE *output = open_file_for_writing("output.txt");
-                if (output == NULL) {
-                    fclose(input);
-                    break;
-                }
-
-                printf("\n=== Результаты поиска ===\n");
-                fprintf(output, "=== Результаты поиска ===\n");
-
-                while (fgets(line, sizeof(line), input) != NULL) {
-                    remove_newline(line);
-                    line_number++;
-
-                    char *found = strstr(line, search_word);
-                    if (found == NULL) {
-                        found = strstr(line, search_word_cap);
-                    }
-
-                    if (found != NULL) {
-                        found_count++;
-                        int word_pos = found - line;
-                        int word_len = strlen(search_word);
-
-                        // 1. Копируем часть строки ДО найденного слова
-                        strncpy(result, line, word_pos);
-                        result[word_pos] = '\0'; // Гарантируем завершение строки
-
-                        // 2. Добавляем открывающую скобку
-                        strcat(result, "[");
-
-                        // 3. Добавляем само найденное слово
-                        strncat(result, found, word_len);
-
-                        // 4. Добавляем закрывающую скобку
-                        strcat(result, "]");
-
-                        // 5. Добавляем остаток строки ПОСЛЕ слова
-                        strcat(result, found + word_len);
-
-                        // Выводим и записываем готовую строку
-                        printf("%d. %s\n", line_number, result);
-                        fprintf(output, "%d. %s\n", line_number, result);
+   case 9: {
+        char search_word[64];
+        char search_word_cap[64];
+        char line[256];
+        char result[512]; 
+        int line_number = 0;
+        int found_count = 0;
+         while (getchar() != '\n');
+        printf("Введите поисковое слово: ");
+        fgets(search_word, sizeof(search_word), stdin);
+        remove_newline(search_word);
+        strcpy(search_word_cap, search_word);
+        int sw_len = strlen(search_word_cap);
+        if (sw_len >= 2 && (unsigned char)search_word_cap[0] == 0xD0 &&
+                (unsigned char)search_word_cap[1] >= 0xB0 && (unsigned char)search_word_cap[1] <= 0xBF) {
+                search_word_cap[1] -= 0x20;
+        } else if (sw_len >= 2 && (unsigned char)search_word_cap[0] == 0xD1 &&
+                (unsigned char)search_word_cap[1] >= 0x80 && (unsigned char)search_word_cap[1] <= 0x8F) {
+                search_word_cap[0] = 0xD0;
+                search_word_cap[1] += 0x10;
+        }
+        FILE *input = open_file_for_reading("input.txt");
+        if (input == NULL) {
+             break;
+        }
+        FILE *output = open_file_for_writing("output.txt");
+        if (output == NULL) {
+            fclose(input);
+            break;
+        }
+        printf("\n=== Результаты поиска ===\n");
+        fprintf(output, "=== Результаты поиска ===\n");
+        while (fgets(line, sizeof(line), input) != NULL) {
+            remove_newline(line);
+            line_number++;
+             char *found = strstr(line, search_word);
+             if (found == NULL) {
+                 found = strstr(line, search_word_cap);
+            }
+            if (found != NULL) {
+                found_count++;
+                int word_pos = found - line;
+                int word_len = strlen(search_word);
+                strncpy(result, line, word_pos);
+                 result[word_pos] = '\0'; 
+                strcat(result, "[");            
+                strncat(result, found, word_len);
+                strcat(result, "]");
+                strcat(result, found + word_len);
+                printf("%d. %s\n", line_number, result);
+                fprintf(output, "%d. %s\n", line_number, result);
                     }
                 }
-
                 printf("\nНайдено статей: %d\n", found_count);
                 fprintf(output, "\nНайдено статей: %d\n", found_count);
-
                 fclose(input);
                 fclose(output);
                 break;
-            } // <-- Эта скобка закрывает case 9
+            } 
     default:
         printf("Неверный пункт меню!\n");
         break;
