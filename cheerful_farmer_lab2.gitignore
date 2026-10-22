@@ -1,0 +1,9 @@
+*.exe
+*.o
+*.out
+*.obj
+.vs/
+.vscode/
+*.swp
+diary.txt
+output.txt
