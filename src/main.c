@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <strings.h>
+#include <time.h>
 
 
 #define INVENTORY_SIZE 10
@@ -79,8 +80,17 @@ void place_walls_and_stairs(char** map, int height, int width) {
         map[i][0] = '#';
     }
     for (int i = 0; i < height; i++) {
-        map[i][0] = '#';
+    map[i][width - 1] = '#';
     }
+    int x1 = 1 + rand() % (height - 2);
+    int y1 = 1 + rand() % (width - 2);
+    map[x1][y1] = 'U';
+    int d_y, d_x;
+    do {
+        d_y = 1 + rand() % (height - 2);
+        d_x = 1 + rand() % (width - 2);
+    } while (d_y == x1 && d_x == x1);
+    map[d_y][d_x] = 'D';
 }
 void remove_newline(char *str) {
     for (int i = 0; str[i] != '\0'; i++) {
@@ -132,6 +142,7 @@ void load_item_names(char item_names[INVENTORY_SIZE][32]) {
 
 
 int main() { 
+     srand(time(NULL));
      setlocale(LC_ALL, "ru_RU.UTF-8");
      system("chcp 65001 > nul");
      int current_day = START_DAY;
