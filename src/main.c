@@ -48,6 +48,26 @@
 FILE* open_file_for_reading(const char* filename);
 FILE* open_file_for_writing(const char* filename);
 
+char** generate_map(int height, int width) {
+    char** map = malloc(height * sizeof(char*));
+    if (map == NULL) {
+        return NULL;
+    }
+    for (int i = 0; i < height; i++) {
+        map[i] = malloc(width * sizeof(char));
+        if (map[i] == NULL) { 
+            for (int k = 0; k < i; k++) {
+                free(map[k]);
+            }
+            free(map);
+            return NULL;
+        }
+        for (int j = 0; j < width; j++) {
+            map[i][j] = '.';  
+        }
+    return map;   
+    }
+}
 void remove_newline(char *str) {
     for (int i = 0; str[i] != '\0'; i++) {
         if (str[i] == '\n' ||  str[i] == '\r')  {
@@ -331,7 +351,10 @@ int main() {
                 fclose(input);
                 fclose(output);
                 break;
-            } 
+            }
+   case 10:
+        printf("В разработке");
+        break; 
     default:
         printf("Неверный пункт меню!\n");
         break;
