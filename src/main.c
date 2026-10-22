@@ -100,7 +100,24 @@ void remove_newline(char *str) {
         }
     }
 }
-
+void draw_map(char** map, int height, int width, int player_y, int player_x) {
+    #ifdef _WIN32
+        system("cls");
+    #else
+        system("clear");
+    #endif
+    
+    for (int i = 0; i < height; i++) {
+        for (int j = 0; j < width; j++) {
+            if (i == player_y && j == player_x) {
+                printf("@");
+            } else {
+                printf("%c", map[i][j]);
+            }
+        }
+        printf("\n"); 
+    }
+}
 int read_int_from_user(const char* prompt) {
     int num;
     int valid_input;
@@ -145,6 +162,8 @@ int main() {
      srand(time(NULL));
      setlocale(LC_ALL, "ru_RU.UTF-8");
      system("chcp 65001 > nul");
+     int player_y = 3; 
+     int player_x = 3;
      int current_day = START_DAY;
      int current_hour = START_HOUR;
      int inventory[INVENTORY_SIZE] = {0};
