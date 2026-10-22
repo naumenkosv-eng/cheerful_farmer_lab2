@@ -48,6 +48,40 @@
 FILE* open_file_for_reading(const char* filename);
 FILE* open_file_for_writing(const char* filename);
 
+char** generate_map(int height, int width) {
+    char** map = malloc(height * sizeof(char*));
+    if (map == NULL) {
+        return NULL;
+    }
+    for (int i = 0; i < height; i++) {
+        map[i] = malloc(width * sizeof(char));
+        if (map[i] == NULL) { 
+            for (int k = 0; k < i; k++) {
+                free(map[k]);
+            }
+            free(map);
+            return NULL;
+        }
+        for (int j = 0; j < width; j++) {
+            map[i][j] = '.';  
+        }
+    return map;   
+    }
+}
+void place_walls_and_stairs(char** map, int height, int width) {
+    for (int j = 0;  j <= width - 1; j++ ) {
+        map[0][j] =  '#';
+    } 
+    for (int j = 0;  j <= width - 1; j++ ) {
+        map[height - 1][j] = '#';
+    }
+    for (int i = 0; i < height; i++) {
+        map[i][0] = '#';
+    }
+    for (int i = 0; i < height; i++) {
+        map[i][0] = '#';
+    }
+}
 void remove_newline(char *str) {
     for (int i = 0; str[i] != '\0'; i++) {
         if (str[i] == '\n' ||  str[i] == '\r')  {
@@ -141,6 +175,7 @@ int main() {
           printf("[7] Поиск предмета в рюкзаке\n");
           printf("[8] Записать состояние в дневник\n");
           printf("[9] Расшифровать старые записи (Задание по варианту)\n");
+          printf("[10] Скользский лед\n");
           printf("Выберите пункт: "); 
      
      if (scanf("%d", &choose) != 1) {
@@ -331,7 +366,10 @@ int main() {
                 fclose(input);
                 fclose(output);
                 break;
-            } 
+            }
+   case 10:
+        printf("В разработке");
+        break; 
     default:
         printf("Неверный пункт меню!\n");
         break;
