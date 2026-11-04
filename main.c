@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <strings.h>
+#include <time.h>
 
 
 #define INVENTORY_SIZE 10
@@ -64,9 +65,39 @@ char** generate_map(int height, int width) {
         }
         for (int j = 0; j < width; j++) {
             map[i][j] = '.';  
-        }
-    return map;   
+        }   
     }
+    return map;
+}
+void free_map(char** map, int height) {
+    if (map == NULL) return;
+    for (int i = 0; i < height; i++) {
+        free(map[i]);
+    }
+    free(map);
+}
+void place_walls_and_stairs(char** map, int height, int width) {
+    for (int j = 0;  j <= width - 1; j++ ) {
+        map[0][j] =  '#';
+    } 
+    for (int j = 0;  j <= width - 1; j++ ) {
+        map[height - 1][j] = '#';
+    }
+    for (int i = 0; i < height; i++) {
+        map[i][0] = '#';
+    }
+    for (int i = 0; i < height; i++) {
+    map[i][width - 1] = '#';
+    }
+    int x1 = 1 + rand() % (height - 2);
+    int y1 = 1 + rand() % (width - 2);
+    map[x1][y1] = 'U';
+    int d_y, d_x;
+    do {
+        d_y = 1 + rand() % (height - 2);
+        d_x = 1 + rand() % (width - 2);
+    } while (d_y == x1 && d_x == y1);
+    map[d_y][d_x] = 'D';
 }
 void remove_newline(char *str) {
     for (int i = 0; str[i] != '\0'; i++) {
@@ -76,7 +107,135 @@ void remove_newline(char *str) {
         }
     }
 }
-
+void draw_map(char** map, int height, int width, int player_y, int player_x) {
+    #ifdef _WIN32
+        system("cls");
+    #else
+        system("clear");
+    #endif
+    
+    for (int i = 0; i < height; i++) {
+        for (int j = 0; j < width; j++) {
+            if (i == player_y && j == player_x) {
+                printf("@");
+            } else {
+                if (map[i][j] == '~') {
+                    printf(".");
+                } else {
+                    printf("%c", map[i][j]);
+                }
+            }
+        }
+        printf("\n");
+    }
+}
+int can_move(char** map, int height, int width, int new_y, int new_x) {
+    if (new_y < 0 || new_y >= height || new_x < 0 || new_x >= width) {
+        return 0; 
+    }
+    if (map[new_y][new_x] == '#') {
+        return 0; 
+    }
+    return 1;
+}
+char get_action() {
+    char action;
+    scanf(" %c", &action); 
+    while (getchar() != '\n');
+    return action;
+}
+void lab4_dungeon() {
+    int height = 10, width = 15;
+    int depth = 1;
+    char** map = generate_map(height, width);
+    place_walls_and_stairs(map, height, width);
+    int player_y = 2;
+    int player_x = 2;
+    char action;
+    do {
+        draw_map(map, height, width, player_y, player_x);
+        
+        printf("Куда идти? (W/A/S/D - движение, Q - выход): ");
+        action = get_action();
+        
+        if (action == 'W' || action == 'w') {
+            int new_y = player_y - 1;
+            int new_x = player_x;
+            if (can_move(map, height, width, new_y, new_x)) {
+                player_y = new_y;
+            } else {
+                printf("Туда нельзя идти!\n");
+            }
+        } 
+        else if (action == 'S' || action == 's') {
+            int new_y = player_y + 1;
+            int new_x = player_x;
+            if (can_move(map, height, width, new_y, new_x)) {
+                player_y = new_y;
+            } else {
+                printf("Туда нельзя идти!\n");
+            }
+        } 
+        else if (action == 'A' || action == 'a') {
+            int new_y = player_y;
+            int new_x = player_x - 1;
+            if (can_move(map, height, width, new_y, new_x)) {
+                player_x = new_x;
+            } else {
+                printf("Туда нельзя идти!\n");
+            }
+        } 
+        else if (action == 'D' || action == 'd') {
+            int new_y = player_y;
+            int new_x = player_x + 1;
+            if (can_move(map, height, width, new_y, new_x)) {
+                player_x = new_x;
+            } else {
+                printf("Туда нельзя идти!\n");
+            }
+        }
+        
+        if (map[player_y][player_x] == 'D') {
+            printf("Вы спустились на этаж %d!\n", depth + 1);
+            free_map(map, height);
+            map = generate_map(height, width);
+            place_walls_and_stairs(map, height, width);
+            player_y = 2;
+            player_x = 2;
+            depth++;
+        }
+        else if (map[player_y][player_x] == 'U') {
+            if (depth > 1) {
+                printf("Вы поднялись на этаж %d!\n", depth - 1);
+                free_map(map, height);
+                map = generate_map(height, width);
+                place_walls_and_stairs(map, height, width);
+                player_y = 2;
+                player_x = 2;
+                depth--;
+            } else {
+                printf("Это первый этаж, выше подняться нельзя!\n");
+            }
+        }
+        
+    } while (action != 'Q' && action != 'q');
+    
+    free_map(map, height);
+    printf("Вы вышли из подземелья!\n");
+}
+void generate_traps(char** map, int height, int width) {
+    int total_cells = (height - 2) * (width - 2);  
+    int trap_count = total_cells * 7 / 100;  
+    int traps_placed = 0;
+    while (traps_placed < trap_count) {
+        int y = 1 + rand() % (height - 2);
+        int x = 1 + rand() % (width - 2);
+        if (map[y][x] == '.') {
+            map[y][x] = '~';  
+            traps_placed++;
+        }
+    }
+}
 int read_int_from_user(const char* prompt) {
     int num;
     int valid_input;
@@ -88,10 +247,8 @@ int read_int_from_user(const char* prompt) {
             while (getchar() != '\n');
             }
      } while (!valid_input);
-    
     return num;
-}
- 
+} 
 void load_item_names(char item_names[INVENTORY_SIZE][32]) {
     FILE *file = fopen("items.txt", "r");
     if (file == NULL) {
@@ -118,6 +275,7 @@ void load_item_names(char item_names[INVENTORY_SIZE][32]) {
 
 
 int main() { 
+     srand(time(NULL));
      setlocale(LC_ALL, "ru_RU.UTF-8");
      system("chcp 65001 > nul");
      int current_day = START_DAY;
@@ -161,6 +319,7 @@ int main() {
           printf("[7] Поиск предмета в рюкзаке\n");
           printf("[8] Записать состояние в дневник\n");
           printf("[9] Расшифровать старые записи (Задание по варианту)\n");
+          printf("[10] Вход в подземелье \n");
           printf("Выберите пункт: "); 
      
      if (scanf("%d", &choose) != 1) {
@@ -353,8 +512,8 @@ int main() {
                 break;
             }
    case 10:
-        printf("В разработке");
-        break; 
+        lab4_dungeon();
+        break;
     default:
         printf("Неверный пункт меню!\n");
         break;
