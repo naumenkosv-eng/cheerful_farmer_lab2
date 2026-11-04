@@ -119,6 +119,7 @@ void draw_map(char** map, int height, int width, int player_y, int player_x) {
             if (i == player_y && j == player_x) {
                 printf("@");
             } else {
+<<<<<<< HEAD:main.c
                 if (map[i][j] == '~') {
                     printf(".");
                 } else {
@@ -127,6 +128,12 @@ void draw_map(char** map, int height, int width, int player_y, int player_x) {
             }
         }
         printf("\n");
+=======
+                printf("%c", map[i][j]);
+            }
+        }
+        printf("\n"); 
+>>>>>>> b9fe9ee7923ffac395cd6d92f0f83042a900d85d:src/main.c
     }
 }
 int can_move(char** map, int height, int width, int new_y, int new_x) {
@@ -149,7 +156,10 @@ void lab4_dungeon() {
     int depth = 1;
     char** map = generate_map(height, width);
     place_walls_and_stairs(map, height, width);
+<<<<<<< HEAD:main.c
     generate_traps(map, height, width);  
+=======
+>>>>>>> b9fe9ee7923ffac395cd6d92f0f83042a900d85d:src/main.c
     int player_y = 2;
     int player_x = 2;
     char action;
@@ -224,6 +234,7 @@ void lab4_dungeon() {
     free_map(map, height);
     printf("Вы вышли из подземелья!\n");
 }
+<<<<<<< HEAD:main.c
 void generate_ice(char** map, int height, int width) {
     int total_cells = (height - 2) * (width - 2);
     int ice_count = total_cells * 7 / 100;  // 7%
@@ -266,6 +277,18 @@ void slide_on_ice(char** map, int height, int width, int* player_y, int* player_
         // Если попали на лестницу — тоже останавливаемся (иначе проскочим)
         if (map[*player_y][*player_x] == 'D' || map[*player_y][*player_x] == 'U') {
             break;
+=======
+void generate_traps(char** map, int height, int width) {
+    int total_cells = (height - 2) * (width - 2);  
+    int trap_count = total_cells * 7 / 100;  
+    int traps_placed = 0;
+    while (traps_placed < trap_count) {
+        int y = 1 + rand() % (height - 2);
+        int x = 1 + rand() % (width - 2);
+        if (map[y][x] == '.') {
+            map[y][x] = '~';  
+            traps_placed++;
+>>>>>>> b9fe9ee7923ffac395cd6d92f0f83042a900d85d:src/main.c
         }
     }
 }
