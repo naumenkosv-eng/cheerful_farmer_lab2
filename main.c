@@ -149,6 +149,7 @@ void lab4_dungeon() {
     int depth = 1;
     char** map = generate_map(height, width);
     place_walls_and_stairs(map, height, width);
+    generate_traps(map, height, width);  
     int player_y = 2;
     int player_x = 2;
     char action;
@@ -223,16 +224,48 @@ void lab4_dungeon() {
     free_map(map, height);
     printf("Вы вышли из подземелья!\n");
 }
-void generate_traps(char** map, int height, int width) {
-    int total_cells = (height - 2) * (width - 2);  
-    int trap_count = total_cells * 7 / 100;  
-    int traps_placed = 0;
-    while (traps_placed < trap_count) {
+void generate_ice(char** map, int height, int width) {
+    int total_cells = (height - 2) * (width - 2);
+    int ice_count = total_cells * 7 / 100;  // 7%
+    
+    int ice_placed = 0;
+    while (ice_placed < ice_count) {
         int y = 1 + rand() % (height - 2);
         int x = 1 + rand() % (width - 2);
+        
+        // Ставим лёд только на обычный пол
         if (map[y][x] == '.') {
-            map[y][x] = '~';  
-            traps_placed++;
+            map[y][x] = '~';
+            ice_placed++;
+        }
+    }
+}
+void slide_on_ice(char** map, int height, int width, int* player_y, int* player_x, char direction) {
+    int dy = 0, dx = 0;
+    if (direction == 'W') dy = -1;
+    else if (direction == 'S') dy = 1;
+    else if (direction == 'A') dx = -1;
+    else if (direction == 'D') dx = 1;
+    
+    while (true) {
+        int new_y = *player_y + dy;
+        int new_x = *player_x + dx;
+        
+        if (new_y < 0 || new_y >= height || new_x < 0 || new_x >= width || 
+            map[new_y][new_x] == '#') {
+            break;  
+        }
+        
+        *player_y = new_y;
+        *player_x = new_x;
+        
+        if (map[*player_y][*player_x] == '.') {
+            break;
+        }
+        
+        // Если попали на лестницу — тоже останавливаемся (иначе проскочим)
+        if (map[*player_y][*player_x] == 'D' || map[*player_y][*player_x] == 'U') {
+            break;
         }
     }
 }
