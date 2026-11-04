@@ -142,56 +142,96 @@ char get_action() {
 }
 void lab4_dungeon() {
     int height = 10, width = 15;
+    int depth = 1;
     char** map = generate_map(height, width);
     place_walls_and_stairs(map, height, width);
     int player_y = 2;
     int player_x = 2;
     char action;
-do {
-    draw_map(map, height, width, player_y, player_x);
+    do {
+        draw_map(map, height, width, player_y, player_x);
+        
+        printf("Куда идти? (W/A/S/D - движение, Q - выход): ");
+        action = get_action();
+        
+        if (action == 'W' || action == 'w') {
+            int new_y = player_y - 1;
+            int new_x = player_x;
+            if (can_move(map, height, width, new_y, new_x)) {
+                player_y = new_y;
+            } else {
+                printf("Туда нельзя идти!\n");
+            }
+        } 
+        else if (action == 'S' || action == 's') {
+            int new_y = player_y + 1;
+            int new_x = player_x;
+            if (can_move(map, height, width, new_y, new_x)) {
+                player_y = new_y;
+            } else {
+                printf("Туда нельзя идти!\n");
+            }
+        } 
+        else if (action == 'A' || action == 'a') {
+            int new_y = player_y;
+            int new_x = player_x - 1;
+            if (can_move(map, height, width, new_y, new_x)) {
+                player_x = new_x;
+            } else {
+                printf("Туда нельзя идти!\n");
+            }
+        } 
+        else if (action == 'D' || action == 'd') {
+            int new_y = player_y;
+            int new_x = player_x + 1;
+            if (can_move(map, height, width, new_y, new_x)) {
+                player_x = new_x;
+            } else {
+                printf("Туда нельзя идти!\n");
+            }
+        }
+        
+        if (map[player_y][player_x] == 'D') {
+            printf("Вы спустились на этаж %d!\n", depth + 1);
+            free_map(map, height);
+            map = generate_map(height, width);
+            place_walls_and_stairs(map, height, width);
+            player_y = 2;
+            player_x = 2;
+            depth++;
+        }
+        else if (map[player_y][player_x] == 'U') {
+            if (depth > 1) {
+                printf("Вы поднялись на этаж %d!\n", depth - 1);
+                free_map(map, height);
+                map = generate_map(height, width);
+                place_walls_and_stairs(map, height, width);
+                player_y = 2;
+                player_x = 2;
+                depth--;
+            } else {
+                printf("Это первый этаж, выше подняться нельзя!\n");
+            }
+        }
+        
+    } while (action != 'Q' && action != 'q');
     
-    printf("Куда идти? (W/A/S/D - движение, Q - выход): ");
-    action = get_action();
-    
-    if (action == 'W' || action == 'w') {
-        int new_y = player_y - 1;
-        int new_x = player_x;
-        if (can_move(map, height, width, new_y, new_x)) {
-            player_y = new_y;
-        } else {
-            printf("Туда нельзя идти!\n");
-        }
-    } else if (action == 'S' || action == 's') {
-        int new_y = player_y + 1;
-        int new_x = player_x;
-        if (can_move(map, height, width, new_y, new_x)) {
-            player_y = new_y;
-        } else {
-            printf("Туда нельзя идти!\n");
-        }
-    } else if (action == 'A' || action == 'a') {
-        int new_y = player_y;
-        int new_x = player_x - 1;
-        if (can_move(map, height, width, new_y, new_x)) {
-            player_x = new_x;
-        } else {
-            printf("Туда нельзя идти!\n");
-        }
-    } else if (action == 'D' || action == 'd') {
-        int new_y = player_y;
-        int new_x = player_x + 1;
-        if (can_move(map, height, width, new_y, new_x)) {
-            player_x = new_x;
-        } else {
-            printf("Туда нельзя идти!\n");
+    free_map(map, height);
+    printf("Вы вышли из подземелья!\n");
+}
+void generate_traps(char** map, int height, int width) {
+    int total_cells = (height - 2) * (width - 2);  
+    int trap_count = total_cells * 7 / 100;  
+    int traps_placed = 0;
+    while (traps_placed < trap_count) {
+        int y = 1 + rand() % (height - 2);
+        int x = 1 + rand() % (width - 2);
+        if (map[y][x] == '.') {
+            map[y][x] = '~';  
+            traps_placed++;
         }
     }
-    
-} while (action != 'Q' && action != 'q');
-free_map(map, height);
-printf("Вы вышли из подземелья!\n");
 }
-
 int read_int_from_user(const char* prompt) {
     int num;
     int valid_input;
@@ -203,10 +243,8 @@ int read_int_from_user(const char* prompt) {
             while (getchar() != '\n');
             }
      } while (!valid_input);
-    
     return num;
-}
- 
+} 
 void load_item_names(char item_names[INVENTORY_SIZE][32]) {
     FILE *file = fopen("items.txt", "r");
     if (file == NULL) {
