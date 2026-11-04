@@ -48,7 +48,8 @@
 
 FILE* open_file_for_reading(const char* filename);
 FILE* open_file_for_writing(const char* filename);
-
+void generate_ice(char** map, int height, int width);
+void slide_on_ice(char** map, int height, int width, int* player_y, int* player_x, char direction);
 char** generate_map(int height, int width) {
     char** map = malloc(height * sizeof(char*));
     if (map == NULL) {
@@ -97,7 +98,7 @@ void place_walls_and_stairs(char** map, int height, int width) {
         d_y = 1 + rand() % (height - 2);
         d_x = 1 + rand() % (width - 2);
     } while (d_y == x1 && d_x == y1);
-    map[d_y][d_x] = 'D';
+    map[d_y][d_x] = 'Y';
 }
 void remove_newline(char *str) {
     for (int i = 0; str[i] != '\0'; i++) {
@@ -115,15 +116,15 @@ void draw_map(char** map, int height, int width, int player_y, int player_x) {
     #endif
     
     for (int i = 0; i < height; i++) {
-        for (int j = 0; j < width; j++) {
-            if (i == player_y && j == player_x) {
-                printf("@");
-            } else {
-                printf("%c", map[i][j]);
-            }
+    for (int j = 0; j < width; j++) {
+        if (i == player_y && j == player_x) {
+            printf("@");
+        } else {
+            printf("%c", map[i][j]);  
         }
-        printf("\n"); 
     }
+    printf("\n");
+}
 }
 int can_move(char** map, int height, int width, int new_y, int new_x) {
     if (new_y < 0 || new_y >= height || new_x < 0 || new_x >= width) {
@@ -145,6 +146,7 @@ void lab4_dungeon() {
     int depth = 1;
     char** map = generate_map(height, width);
     place_walls_and_stairs(map, height, width);
+    generate_ice(map, height, width);
     int player_y = 2;
     int player_x = 2;
     char action;
@@ -159,15 +161,25 @@ void lab4_dungeon() {
             int new_x = player_x;
             if (can_move(map, height, width, new_y, new_x)) {
                 player_y = new_y;
-            } else {
-                printf("Туда нельзя идти!\n");
-            }
-        } 
+                player_x = new_x;
+        
+            printf(">>> Символ под игроком: '%c' (код %d)\n", map[player_y][player_x], map[player_y][player_x]);
+        
+            if (map[player_y][player_x] == '~') {
+                printf("⚠️  Вы поскользнулись на льду!\n");
+                slide_on_ice(map, height, width, &player_y, &player_x, 'W');
+        }
+    }
+}
         else if (action == 'S' || action == 's') {
             int new_y = player_y + 1;
             int new_x = player_x;
             if (can_move(map, height, width, new_y, new_x)) {
                 player_y = new_y;
+                if (map[player_y][player_x] == '~') {
+                    printf(" Вы поскользнулись на льду!\n");
+                    slide_on_ice(map, height, width, &player_y, &player_x, 'S');
+                }
             } else {
                 printf("Туда нельзя идти!\n");
             }
@@ -177,6 +189,10 @@ void lab4_dungeon() {
             int new_x = player_x - 1;
             if (can_move(map, height, width, new_y, new_x)) {
                 player_x = new_x;
+                if (map[player_y][player_x] == '~') {
+                    printf(" Вы поскользнулись на льду!\n");
+                    slide_on_ice(map, height, width, &player_y, &player_x, 'A');
+                }
             } else {
                 printf("Туда нельзя идти!\n");
             }
@@ -186,12 +202,16 @@ void lab4_dungeon() {
             int new_x = player_x + 1;
             if (can_move(map, height, width, new_y, new_x)) {
                 player_x = new_x;
+                if (map[player_y][player_x] == '~') {
+                    printf(" Вы поскользнулись на льду!\n");
+                    slide_on_ice(map, height, width, &player_y, &player_x, 'D');
+                }
             } else {
                 printf("Туда нельзя идти!\n");
             }
         }
         
-        if (map[player_y][player_x] == 'D') {
+        if (map[player_y][player_x] == 'Y') {
             printf("Вы спустились на этаж %d!\n", depth + 1);
             free_map(map, height);
             map = generate_map(height, width);
@@ -219,16 +239,48 @@ void lab4_dungeon() {
     free_map(map, height);
     printf("Вы вышли из подземелья!\n");
 }
-void generate_traps(char** map, int height, int width) {
-    int total_cells = (height - 2) * (width - 2);  
-    int trap_count = total_cells * 7 / 100;  
-    int traps_placed = 0;
-    while (traps_placed < trap_count) {
+void generate_ice(char** map, int height, int width) {
+    int total_cells = (height - 2) * (width - 2);
+    int ice_count = total_cells * 7 / 100;  
+    
+    int ice_placed = 0;
+    while (ice_placed < ice_count) {
         int y = 1 + rand() % (height - 2);
         int x = 1 + rand() % (width - 2);
+        
         if (map[y][x] == '.') {
-            map[y][x] = '~';  
-            traps_placed++;
+            map[y][x] = '~';
+            ice_placed++;
+        }
+    }
+}
+
+void slide_on_ice(char** map, int height, int width, int* player_y, int* player_x, char direction) {
+    printf(" Вы поскользнулись на льду!\n");
+    int dy = 0, dx = 0;
+    if (direction == 'W') dy = -1;
+    else if (direction == 'S') dy = 1;
+    else if (direction == 'A') dx = -1;
+    else if (direction == 'D') dx = 1;
+    
+    while (true) {
+        int new_y = *player_y + dy;
+        int new_x = *player_x + dx;
+        
+        if (new_y < 0 || new_y >= height || new_x < 0 || new_x >= width || 
+            map[new_y][new_x] == '#') {
+            break;  
+        }
+        
+        *player_y = new_y;
+        *player_x = new_x;
+        
+        if (map[*player_y][*player_x] == '.') {
+            break;
+        }
+    
+        if (map[*player_y][*player_x] == 'Y' || map[*player_y][*player_x] == 'U') {
+            break;
         }
     }
 }
