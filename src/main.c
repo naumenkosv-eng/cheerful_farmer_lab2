@@ -213,6 +213,7 @@ void lab4_dungeon() {
             free_map(map, height);
             map = generate_map(height, width);
             place_walls_and_stairs(map, height, width);
+            generate_ice(map, height, width);
             player_y = 2;
             player_x = 2;
             depth++;
@@ -223,6 +224,7 @@ void lab4_dungeon() {
                 free_map(map, height);
                 map = generate_map(height, width);
                 place_walls_and_stairs(map, height, width);
+                generate_ice(map, height, width);
                 player_y = 2;
                 player_x = 2;
                 depth--;
