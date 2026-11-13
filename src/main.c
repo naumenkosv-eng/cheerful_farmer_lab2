@@ -3,7 +3,6 @@
 #include <locale.h>
 #include <time.h>
 
-// Подключаем наши модули
 #include "player.h"
 #include "utils.h"
 #include "map.h"

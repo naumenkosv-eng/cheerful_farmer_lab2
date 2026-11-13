@@ -29,6 +29,72 @@ void place_walls_and_stairs(Map *m) {
     
     m->grid[exit_y][exit_x] = TILE_EXIT;
 }
+void generate_ice(Map *m) {
+    int target = (m->height - 2) * (m->width - 2) * 25 / 100;  
+    int placed = 0;
+    int attempts = 0;
+
+    while (placed < target && attempts < 5000) {
+        attempts++;
+        int len = 2 + rand() % 4;          
+        int horizontal = rand() % 2;
+
+        int y, x;
+        if (horizontal) {
+            if (m->width - 2 < len) continue;
+            y = 1 + rand() % (m->height - 2);
+            x = 1 + rand() % (m->width - 2 - len + 1);
+        } else {
+            if (m->height - 2 < len) continue;
+            y = 1 + rand() % (m->height - 2 - len + 1);
+            x = 1 + rand() % (m->width - 2);
+        }
+
+        int ok = 1;
+        for (int i = 0; i < len; i++) {
+            int cy = horizontal ? y : y + i;
+            int cx = horizontal ? x + i : x;
+            if (m->grid[cy][cx] != TILE_EMPTY) { ok = 0; break; }
+        }
+        if (!ok) continue;
+
+        for (int i = 0; i < len; i++) {
+            int cy = horizontal ? y : y + i;
+            int cx = horizontal ? x + i : x;
+            m->grid[cy][cx] = '~'; 
+        }
+        placed += len;
+    }
+}
+void slide_on_ice(Map *m, Player *p, char direction) {
+    printf("\n>>> Вы поскользнулись на льду! <<<\n");
+    int dy = 0, dx = 0;
+    if (direction == 'W' || direction == 'w') dy = -1;
+    else if (direction == 'S' || direction == 's') dy = 1;
+    else if (direction == 'A' || direction == 'a') dx = -1;
+    else if (direction == 'D' || direction == 'd') dx = 1;
+    
+    while (1) {
+        int new_y = p->y + dy;
+        int new_x = p->x + dx;
+        
+        if (new_y < 0 || new_y >= m->height || new_x < 0 || new_x >= m->width || 
+            m->grid[new_y][new_x] == TILE_WALL) {
+            break;  
+        }
+        
+        
+        p->y = new_y;
+        p->x = new_x;
+        
+        if (m->grid[p->y][p->x] == TILE_EMPTY) {
+            break;
+        }
+        if (m->grid[p->y][p->x] == TILE_EXIT) {
+            break;
+        }
+    }
+}
 Map* create_map(int height, int width, int floor) {
     Map *m = (Map*)malloc(sizeof(Map));
     if (m == NULL) return NULL;
@@ -46,6 +112,7 @@ Map* create_map(int height, int width, int floor) {
     }
     
     place_walls_and_stairs(m);
+    generate_ice(m);
     return m;
 }
 void draw_map(const Map *m, int player_y, int player_x) {
@@ -71,7 +138,6 @@ int can_move(const Map *m, int new_y, int new_x) {
 }
 void make_step(Player *p, Map *m, char action) {
     p->stamina -= 1;
-    
     int oil_cost = 0;
     if (p->lantern.mode == LIGHT_NORMAL) oil_cost = 1;
     else if (p->lantern.mode == LIGHT_BRIGHT) oil_cost = 2;
@@ -86,6 +152,7 @@ void make_step(Player *p, Map *m, char action) {
         p->lantern.mode = LIGHT_OFF;
     }
 
+    // 3. Штраф за темноту
     if (p->lantern.mode == LIGHT_OFF) {
         if (rand() % 100 < 20) { 
             printf("\n>>> В темноте вы ударились о камни! (-5 HP, -2 стамины) <<<\n");
@@ -104,11 +171,14 @@ void make_step(Player *p, Map *m, char action) {
     if (can_move(m, new_y, new_x)) {
         p->y = new_y;
         p->x = new_x;
+        if (m->grid[p->y][p->x] == '~') {
+            slide_on_ice(m, p, action); 
+        }
+        
     } else {
         printf("Туда нельзя идти! (Стена)\n");
     }
 }
-
 void start_adventure(Player *p, GameTime *t) {
     Map *m = create_map(MAP_HEIGHT, MAP_WIDTH, 1);
     p->x = 1;

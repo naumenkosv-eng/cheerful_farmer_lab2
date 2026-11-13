@@ -10,35 +10,6 @@
 #define OIL_PRICE 30
 #define NIGHT_HOUR 2 
 
-
-typedef enum {
-    LIGHT_OFF = 0,    
-    LIGHT_NORMAL = 1, 
-    LIGHT_BRIGHT = 2  
-} LightMode;
-
-typedef struct {
-    int oil;          
-    LightMode mode;   
-} Lantern;
-
-typedef struct {
-    int current_day;   
-    int current_hour;  
-} GameTime;
-
-typedef struct {
-    char name[MAX_NAME_LEN];
-    int hp;
-    int max_hp;
-    int stamina;
-    int max_stamina;
-    int gold;
-    int x, y;
-    int inventory[MAX_ITEMS];
-    Lantern lantern; 
-} Player;
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -257,4 +228,102 @@ void invert_inventory(Player *p) {
     printf("\n--- Инвентарь ПОСЛЕ инверсии ---\n");
     show_inventory(p);
 }
-endif; 
+
+void search_item(const Player *p) {
+    if (p == NULL) return;
+    
+    char search_name[32];
+    printf("Введите название предмета для поиска (например, Топор): ");
+    scanf("%31s", search_name);
+    
+    int found = 0;
+    printf("\n--- РЕЗУЛЬТАТЫ ПОИСКА '%s' ---\n", search_name);
+    for (int i = 0; i < MAX_ITEMS; i++) {
+        // Проверяем, не пустой ли слот, и совпадает ли название
+        if (p->inventory[i] != ITEM_EMPTY) {
+            if (strcmp(get_item_name(p->inventory[i]), search_name) == 0) {
+                printf("  Найдено в слоте %d (ID: %d)\n", i, p->inventory[i]);
+                found = 1;
+            }
+        }
+    }
+    if (!found) {
+        printf("  Предмет с таким названием не найден в рюкзаке.\n");
+    }
+    printf("---------------------------------\n");
+}
+
+
+void write_diary(const Player *p, const GameTime *t) {
+    if (p == NULL) return;
+    
+    // Открываем файл для дописывания в конец ("a")
+    FILE *diary = fopen("diary.txt", "a");
+    if (diary == NULL) {
+        printf("Ошибка: не удалось открыть diary.txt для записи!\n");
+        return;
+    }
+    
+    fprintf(diary, "    Дневник фермера %s    \n", p->name);
+    fprintf(diary, "День: %d, Время: %02d:00\n", t->current_day, t->current_hour);
+    fprintf(diary, "Золото: %d | HP: %d/%d | Стамина: %d/%d\n", 
+            p->gold, p->hp, p->max_hp, p->stamina, p->max_stamina);
+    fprintf(diary, "Инвентарь:\n");
+    for (int i = 0; i < MAX_ITEMS; i++) {
+        fprintf(diary, "  Слот %d: %s\n", i, get_item_name(p->inventory[i]));
+    }
+    fprintf(diary, "==========================\n\n");
+    
+    fclose(diary);
+    printf("Запись успешно добавлена в diary.txt!\n");
+}
+void decode_records(void) {
+    char search_word[64];
+    char line[256];
+    int line_number = 0;
+    int found_count = 0;
+
+    printf("Введите поисковое слово: ");
+    scanf("%63s", search_word);
+
+    // Используем функции из utils.c
+    FILE *input = open_file_for_reading("input.txt");
+    if (input == NULL) return; // open_file_for_reading сам выведет ошибку
+
+    FILE *output = open_file_for_writing("output.txt");
+    if (output == NULL) {
+        fclose(input);
+        return;
+    }
+
+    printf("\n=== Результаты поиска ===\n");
+    fprintf(output, "=== Результаты поиска ===\n");
+
+    while (fgets(line, sizeof(line), input) != NULL) {
+        remove_newline(line); \
+        line_number++;
+        char *found = strstr(line, search_word);
+        if (found != NULL) {
+            found_count++;
+            int word_pos = found - line;
+            int word_len = strlen(search_word);
+            printf("%d. ", line_number);
+            fprintf(output, "%d. ", line_number);
+            for (int i = 0; i < word_pos; i++) {
+                printf("%c", line[i]);
+                fprintf(output, "%c", line[i]);
+            }
+            printf("[%.*s]", word_len, found);
+            fprintf(output, "[%.*s]", word_len, found);
+            printf("%s\n", found + word_len);
+            fprintf(output, "%s\n", found + word_len);
+        }
+    }
+
+    printf("\nНайдено статей: %d\n", found_count);
+    fprintf(output, "\nНайдено статей: %d\n", found_count);
+
+    fclose(input);
+    fclose(output);
+    printf("Результаты сохранены в output.txt\n");
+}
