@@ -8,6 +8,19 @@
 #define NIGHT_HOUR 2 
 
 typedef enum {
+    ITEM_EMPTY = 0, 
+    ITEM_WOOD, 
+    ITEM_STONE, 
+    ITEM_SEEDS,
+    ITEM_CARROT, 
+    ITEM_WATER, 
+    ITEM_APPLE, 
+    ITEM_HAY, 
+    ITEM_AXE, 
+    ITEM_RAKE
+} ItemID;
+
+typedef enum {
     LIGHT_OFF = 0,
     LIGHT_NORMAL = 1,
     LIGHT_BRIGHT = 2

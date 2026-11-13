@@ -1,5 +1,8 @@
-#ifndef PLAYER_H
-#define PLAYER_H
+#include "utils.h"
+#include "player.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #define MAX_NAME_LEN 32
 #define MAX_ITEMS 10
@@ -112,12 +115,11 @@ void print_player_card(const Player *p, const GameTime *t) {
         case LIGHT_BRIGHT: printf("Яркий\n");   break;
     }
 
-    // Время (если передали)
+    
     if (t != NULL) {
         printf("Игровое время:    День %d, %02d:00\n", t->current_day, t->current_hour);
     }
 
-    // Инвентарь
     printf("-----------------------------------\n");
     printf("ИНВЕНТАРЬ:\n");
     int has_items = 0;
@@ -215,6 +217,44 @@ void time_sleep(Player *p, GameTime *t) {
     printf("HP: %d/%d, Стамина: %d/%d\n",
            p->hp, p->max_hp, p->stamina, p->max_stamina);
 }
+void show_inventory(const Player *p) {
+    if (p == NULL) return;
+    printf("\n--- ИНВЕНТАРЬ ---\n");
+    for (int i = 0; i < MAX_ITEMS; i++) {
+        // Выводим ID предмета и его название
+        printf("Слот %d: [%d] - %s\n", i, p->inventory[i], get_item_name(p->inventory[i]));
+    }
+}
+void add_item_to_inventory(Player *p) {
+    if (p == NULL) return;
+    
+    int item_id = read_int_safe("Введите ID предмета (0-9): ", 0, 9);
+    int slot = read_int_safe("Введите номер слота (0-9): ", 0, MAX_ITEMS - 1);
+    
+    p->inventory[slot] = item_id;
+    printf("Предмет %s добавлен в слот %d.\n", get_item_name(item_id), slot);
+}
 
-
-#endif 
+void drop_item_from_inventory(Player *p) {
+    if (p == NULL) return;
+    
+    int slot = read_int_safe("Введите номер слота для удаления (0-9): ", 0, MAX_ITEMS - 1);
+    p->inventory[slot] = ITEM_EMPTY; 
+    printf("Слот %d очищен.\n", slot);
+}
+void invert_inventory(Player *p) {
+    if (p == NULL) return;
+    
+    printf("\n--- Инвентарь ДО инверсии ---\n");
+    show_inventory(p);
+    int temp;
+    for (int i = 0, j = MAX_ITEMS - 1; i < j; i++, j--) {
+        temp = p->inventory[i];
+        p->inventory[i] = p->inventory[j];
+        p->inventory[j] = temp;
+    }
+    
+    printf("\n--- Инвентарь ПОСЛЕ инверсии ---\n");
+    show_inventory(p);
+}
+endif; 
