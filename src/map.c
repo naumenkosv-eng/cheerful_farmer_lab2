@@ -95,23 +95,46 @@ void slide_on_ice(Map *m, Player *p, char direction) {
         }
     }
 }
+void generate_obstacles(Map *m) {
+    int total_cells = (m->height - 2) * (m->width - 2);
+    int target_trees = (int)(total_cells * 0.05);
+    int target_stones = (int)(total_cells * 0.05);
+    int placed_trees = 0;
+    while (placed_trees < target_trees) {
+        int y = 1 + rand() % (m->height - 2);
+        int x = 1 + rand() % (m->width - 2);
+        if (y == 1 && x == 1) continue;
+        if (m->grid[y][x] == TILE_EMPTY) {
+            m->grid[y][x] = TILE_TREE; 
+            placed_trees++;
+        }
+    }
+    int placed_stones = 0;
+    while (placed_stones < target_stones) {
+        int y = 1 + rand() % (m->height - 2);
+        int x = 1 + rand() % (m->width - 2);
+        if (y == 1 && x == 1) continue;
+        if (m->grid[y][x] == TILE_EMPTY) {
+            m->grid[y][x] = TILE_STONE; 
+            placed_stones++;
+        }
+    }
+}
 Map* create_map(int height, int width, int floor) {
     Map *m = (Map*)malloc(sizeof(Map));
     if (m == NULL) return NULL;
-
     m->height = height;
     m->width = width;
     m->current_floor = floor;
     m->grid = (char**)malloc(height * sizeof(char*));
     for (int i = 0; i < height; i++) {
         m->grid[i] = (char*)malloc(width * sizeof(char));
-        // Заполняем пустыми клетками
         for (int j = 0; j < width; j++) {
             m->grid[i][j] = TILE_EMPTY;
         }
     }
-    
     place_walls_and_stairs(m);
+    generate_obstacles(m);
     generate_ice(m);
     return m;
 }
@@ -131,11 +154,13 @@ int can_move(const Map *m, int new_y, int new_x) {
     if (new_y < 0 || new_y >= m->height || new_x < 0 || new_x >= m->width) {
         return 0; 
     }
-    if (m->grid[new_y][new_x] == TILE_WALL) {
-        return 0; 
+    if (m->grid[new_y][new_x] == TILE_WALL || 
+    m->grid[new_y][new_x] == TILE_TREE || 
+    m->grid[new_y][new_x] == TILE_STONE) {
+    return 0; 
+        } 
+    return 1;  
     }
-    return 1;
-}
 void make_step(Player *p, Map *m, char action) {
     p->stamina -= 1;
     int oil_cost = 0;
@@ -151,8 +176,6 @@ void make_step(Player *p, Map *m, char action) {
         }
         p->lantern.mode = LIGHT_OFF;
     }
-
-    // 3. Штраф за темноту
     if (p->lantern.mode == LIGHT_OFF) {
         if (rand() % 100 < 20) { 
             printf("\n>>> В темноте вы ударились о камни! (-5 HP, -2 стамины) <<<\n");

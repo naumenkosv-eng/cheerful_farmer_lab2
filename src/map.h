@@ -8,8 +8,10 @@
 
 #define TILE_EMPTY '.'
 #define TILE_WALL  '#'
-#define TILE_EXIT  'Y'  // Лестница вниз (новый этаж)
-#define TILE_UP    'U'  // Лестница вверх (если решишь оставить)
+#define TILE_EXIT  'Y'  
+#define TILE_UP    'U' 
+#define TILE_STONE 'K'
+#define TILE_TREE  'H'
 
 typedef struct {
     char **grid;       
