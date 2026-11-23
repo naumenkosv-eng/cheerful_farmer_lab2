@@ -8,6 +8,9 @@ void free_map(Map *m) {
     for (int i = 0; i < m->height; i++) {
         free(m->grid[i]);
     }
+    if (m->entities != NULL) {
+        free(m->entities);
+    }
     free(m->grid);
     printf("Память структуры карты по адресу %p освобождена\n", (void*)m);
     free(m);
@@ -120,6 +123,85 @@ void generate_obstacles(Map *m) {
         }
     }
 }
+void add_entity(Map *m, Entity e) {
+    if (m->entity_count >= m->max_entities) return; 
+    m->entities[m->entity_count] = e;
+    m->entity_count++;
+    m->grid[e.y][e.x] = e.symbol;
+}
+void generate_entities(Map *m, int floor) {
+    int total_cells = (m->height - 2) * (m->width - 2);
+    m->max_entities = (total_cells * 40) / 100 + 10;
+    m->entities = (Entity*)malloc(m->max_entities * sizeof(Entity));
+    m->entity_count = 0;
+    int mult = 1 + (floor / 2);
+    int target_trees = total_cells * 0.15;
+    for (int i = 0; i < target_trees; i++) {
+        int y = 1 + rand() % (m->height - 2);
+        int x = 1 + rand() % (m->width - 2);
+        if (m->grid[y][x] == '.') {
+            Entity e;
+            e.type = ENT_TREE;
+            e.symbol = 'T';
+            e.x = x; e.y = y;
+            e.max_hp = 10 * mult; e.hp = e.max_hp;
+            e.attack = 0; e.defense = 0;
+            e.drop_item_id = 1; 
+            e.is_alive = 1;
+            add_entity(m, e);
+        }
+    }
+    int target_rocks = total_cells * 0.15;
+    for (int i = 0; i < target_rocks; i++) {
+        int y = 1 + rand() % (m->height - 2);
+        int x = 1 + rand() % (m->width - 2);
+        if (m->grid[y][x] == '.') {
+            Entity e;
+            e.type = ENT_ROCK;
+            e.symbol = 'R'; 
+            e.x = x; e.y = y;
+            e.max_hp = 20 * mult; e.hp = e.max_hp;
+            e.attack = 0; e.defense = 0;
+            e.drop_item_id = 2; 
+            e.is_alive = 1;
+            add_entity(m, e);
+        }
+    }
+    int target_heals = total_cells * 0.05;
+    for (int i = 0; i < target_heals; i++) {
+        int y = 1 + rand() % (m->height - 2);
+        int x = 1 + rand() % (m->width - 2);
+        if (m->grid[y][x] == '.') {
+            Entity e;
+            e.type = ENT_HEAL;
+            e.symbol = '+';
+            e.x = x; e.y = y;
+            e.max_hp = 1; e.hp = 1;
+            e.attack = 0; e.defense = 0;
+            e.drop_item_id = 0;
+            e.is_alive = 1;
+            add_entity(m, e);
+        }
+    }
+    int target_monsters = total_cells * 0.05;
+    for (int i = 0; i < target_monsters; i++) {
+        int y = 1 + rand() % (m->height - 2);
+        int x = 1 + rand() % (m->width - 2);
+        // Не ставим монстра прямо на игрока
+        if (m->grid[y][x] == '.' && !(x == 1 && y == 1)) {
+            Entity e;
+            e.type = ENT_MONSTER;
+            e.symbol = 'M';
+            e.x = x; e.y = y;
+            e.max_hp = 15 * mult; e.hp = e.max_hp;
+            e.attack = 3 * mult; 
+            e.defense = 1 * mult;
+            e.drop_item_id = 0; // Пока без лута
+            e.is_alive = 1;
+            add_entity(m, e);
+        }
+    }
+}
 Map* create_map(int height, int width, int floor) {
     Map *m = (Map*)malloc(sizeof(Map));
     if (m == NULL) return NULL;
@@ -133,9 +215,16 @@ Map* create_map(int height, int width, int floor) {
             m->grid[i][j] = TILE_EMPTY;
         }
     }
+    m->grid = (char**)malloc(height * sizeof(char*));
+    for (int i = 0; i < height; i++) {
+        m->grid[i] = (char*)malloc(width * sizeof(char));
+        for (int j = 0; j < width; j++) {
+            m->grid[i][j] = '.';
+        }
+    }
     place_walls_and_stairs(m);
-    generate_obstacles(m);
-    generate_ice(m);
+    generate_ice(m);   
+    generate_entities(m, floor);
     return m;
 }
 void draw_map(const Map *m, int player_y, int player_x) {
@@ -252,7 +341,7 @@ void start_adventure(Player *p, GameTime *t) {
             p->gold = p->gold / 2;
             p->stamina = p->max_stamina;
             p->hp = p->max_hp;
-            t->current_hour = 8; // Просыпаемся в 8 утра
+            t->current_hour = 8; 
             t->current_day++;
             break; 
         }
