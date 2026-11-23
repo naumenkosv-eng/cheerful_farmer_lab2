@@ -44,6 +44,8 @@ typedef struct {
     int gold;
     int x, y;
     int inventory[MAX_ITEMS];
+    int attack;
+    int defendes;
     Lantern lantern; 
 } Player;
 

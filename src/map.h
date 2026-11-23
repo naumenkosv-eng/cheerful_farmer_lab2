@@ -2,6 +2,7 @@
 #define MAP_H
 
 #include "player.h"
+#include "entity.h"
 
 #define MAP_HEIGHT 30
 #define MAP_WIDTH 30
@@ -18,6 +19,9 @@ typedef struct {
     int height;        
     int width;         
     int current_floor; 
+    Entity *entities;  
+    int entity_count;  
+    int max_entities;
 } Map;
 
 
