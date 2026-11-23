@@ -227,15 +227,48 @@ Map* create_map(int height, int width, int floor) {
     generate_entities(m, floor);
     return m;
 }
-void draw_map(const Map *m, int player_y, int player_x) {
+void render_map(const Map *m, const Player *p, const GameTime *t, const char *last_event) {
+    // Очистка экрана
+    #ifdef _WIN32
+        system("cls");
+    #else
+        system("clear");
+    #endif
+    // 1. Вывод HUD (Интерфейс сверху)
+    printf("=== ПОДЗЕМЕЛЬЕ ===\n");
+    printf("HP: %d/%d | Выносливость: %d/%d | Золото: %d | Этаж: %d | Время: %02d:00\n", 
+           p->hp, p->max_hp, p->stamina, p->max_stamina, p->gold, m->current_floor, t->current_hour);
+    printf("Фонарь: [Масло: %d/100] ", p->lantern.oil);
+    if (p->lantern.mode == LIGHT_OFF) printf("Режим: ВЫКЛ\n");
+    else if (p->lantern.mode == LIGHT_NORMAL) printf("Режим: ОБЫЧНЫЙ\n");
+    else printf("Режим: ЯРКИЙ\n");
+    printf("-----------------------------------\n");
+
     for (int i = 0; i < m->height; i++) {
         for (int j = 0; j < m->width; j++) {
-            if (i == player_y && j == player_x) {
-                printf("@"); // Игрок
+            // Если это координаты игрока - рисуем @
+            if (i == p->y && j == p->x) {
+                printf("@");
             } else {
-                printf("%c", m->grid[i][j]);
+                int drawn = 0;
+                for (int e = 0; e < m->entity_count; e++) {
+                    if (m->entities[e].is_alive && m->entities[e].x == j && m->entities[e].y == i) {
+                        printf("%c", m->entities[e].symbol); 
+                        drawn = 1;
+                        break; 
+                    }
+                }
+                if (!drawn) {
+                    printf("%c", m->grid[i][j]);
+                }
             }
         }
+        printf("\n");
+    }
+    printf("-----------------------------------\n");
+    if (last_event != NULL && last_event[0] != '\0') {
+        printf(">>> ПОСЛЕДНЕЕ СОБЫТИЕ: %s <<<\n", last_event);
+    } else {
         printf("\n");
     }
 }
