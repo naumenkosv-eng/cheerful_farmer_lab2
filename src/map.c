@@ -228,13 +228,11 @@ Map* create_map(int height, int width, int floor) {
     return m;
 }
 void render_map(const Map *m, const Player *p, const GameTime *t, const char *last_event) {
-    // Очистка экрана
     #ifdef _WIN32
         system("cls");
     #else
         system("clear");
     #endif
-    // 1. Вывод HUD (Интерфейс сверху)
     printf("=== ПОДЗЕМЕЛЬЕ ===\n");
     printf("HP: %d/%d | Выносливость: %d/%d | Золото: %d | Этаж: %d | Время: %02d:00\n", 
            p->hp, p->max_hp, p->stamina, p->max_stamina, p->gold, m->current_floor, t->current_hour);
@@ -246,7 +244,6 @@ void render_map(const Map *m, const Player *p, const GameTime *t, const char *la
 
     for (int i = 0; i < m->height; i++) {
         for (int j = 0; j < m->width; j++) {
-            // Если это координаты игрока - рисуем @
             if (i == p->y && j == p->x) {
                 printf("@");
             } else {
@@ -283,6 +280,75 @@ int can_move(const Map *m, int new_y, int new_x) {
         } 
     return 1;  
     }
+// map.c
+void update_player_action(Player *p, Map *m, char action, char *last_event) {
+    int nx = p->x;
+    int ny = p->y;
+
+    // 1. Определяем, куда хочет шагнуть игрок
+    if (action == 'W' || action == 'w') ny--;
+    else if (action == 'S' || action == 's') ny++;
+    else if (action == 'A' || action == 'a') nx--;
+    else if (action == 'D' || action == 'd') nx++;
+    else return; // Если нажали что-то другое, ничего не делаем
+
+    // 2. Ищем, что находится на целевой клетке
+    Entity *target = get_entity_at(m, nx, ny);
+
+    if (target != NULL) {
+        // --- ВЗАИМОДЕЙСТВИЕ С СУЩНОСТЬЮ ---
+        if (target->type == ENT_HEAL) {
+            // Сбор аптечки
+            p->hp += 20; 
+            if (p->hp > p->max_hp) p->hp = p->max_hp;
+            p->stamina += 10; 
+            if (p->stamina > p->max_stamina) p->stamina = p->max_stamina;
+            
+            target->is_alive = 0; // Аптечка исчезает
+            sprintf(last_event, "Вы собрали аптечку! (+20 HP, +10 стамины)");
+            
+        } else if (target->type == ENT_TREE || target->type == ENT_ROCK) {
+            int dmg = p->attack - (target->defense / 2);
+            if (dmg < 1) dmg = 1;
+            
+            target->hp -= dmg;
+            
+            if (target->hp <= 0) {
+                target->is_alive = 0;
+                int slot = -1;
+                for (int i = 0; i < MAX_ITEMS; i++) {
+                    if (p->inventory[i] == ITEM_EMPTY) { 
+                        slot = i; break;
+                    }
+                }
+                
+                if (slot != -1) {
+                    p->inventory[slot] = target->drop_item_id;
+                    sprintf(last_event, "Вы разрушили объект и получили: %s!", get_item_name(target->drop_item_id));
+                } else {
+                    sprintf(last_event, "Рюкзак полон! Ресурс пропал.");
+                }
+            } else {
+                sprintf(last_event, "Вы ударили объект на %d урона. (Осталось: %d)", dmg, target->hp);
+            }
+        } else if (target->type == ENT_MONSTER) {
+            sprintf(last_event, "Вы замахнулись на монстра, но он увернулся! (Бой будет на Этапе 5)");
+        }
+
+    } else {
+        if (can_move(m, nx, ny)) {
+            p->x = nx;
+            p->y = ny;
+            sprintf(last_event, "Вы сделали шаг.");
+            if (m->grid[p->y][p->x] == '~') {
+                slide_on_ice(m, p, action);
+                strcat(last_event, " Вы поскользнулись на льду!");
+            }
+        } else {
+            sprintf(last_event, "Туда нельзя идти! (Стена)");
+        }
+    }
+}
 void make_step(Player *p, Map *m, char action) {
     p->stamina -= 1;
     int oil_cost = 0;
@@ -326,83 +392,43 @@ void make_step(Player *p, Map *m, char action) {
 }
 void start_adventure(Player *p, GameTime *t) {
     Map *m = create_map(MAP_HEIGHT, MAP_WIDTH, 1);
-    p->x = 1;
-    p->y = 1;
-
+    p->x = 1; p->y = 1;
+    
     char action;
+    char last_event[128] = "Вы вошли в подземелье!"; 
 
     do {
-        #ifdef _WIN32
-            system("cls");
-        #else
-            system("clear");
-        #endif
-        printf("=== ПОДЗЕМЕЛЬЕ ===\n");
-        printf("HP: %d/%d | Выносливость: %d/%d | Золото: %d | Этаж: %d | Время: %02d:00\n", 
-               p->hp, p->max_hp, p->stamina, p->max_stamina, p->gold, m->current_floor, t->current_hour);
+        render_map(m, p, t, last_event); 
         
-        printf("Фонарь: [Масло: %d/100] ", p->lantern.oil);
-        if (p->lantern.mode == LIGHT_OFF) printf("Режим: ВЫКЛ\n");
-        else if (p->lantern.mode == LIGHT_NORMAL) printf("Режим: ОБЫЧНЫЙ\n");
-        else printf("Режим: ЯРКИЙ\n");
-        printf("-----------------------------------\n");
-        draw_map(m, p->y, p->x);
+    
+        printf("\n(W/A/S/D - действие, F - фонарь, Q - выход): ");
+        action = get_action(); 
         
-        printf("\n(W/A/S/D - идти, F - фонарь, Q - выход): ");
-        action = get_action();
-
         if (action == 'Q' || action == 'q') {
-            printf("Вы благополучно выбрались из подземелья! Золото сохранено.\n");
-            break; 
+            break;
         }
+        
         if (action == 'F' || action == 'f') {
+            // Логика фонаря
             printf("\nВыберите режим фонаря (0-Выкл, 1-Обычный, 2-Яркий): ");
             int l_choice = read_int_safe("", 0, 2);
             if (p->lantern.oil > 0 || l_choice == 0) {
                 p->lantern.mode = (LightMode)l_choice;
+                strcpy(last_event, "Вы переключили фонарь.");
             } else {
-                printf("Нет масла, чтобы зажечь!\n");
-                printf("Нажмите Enter...");
-                while (getchar() != '\n');
+                strcpy(last_event, "Нет масла, чтобы зажечь!");
             }
             continue;
         }
-        make_step(p, m, action);
-
-        if (p->stamina <= 0 || p->hp <= 0 || (t->current_hour >= 2 && t->current_hour < 8)) {
-            printf("\n>>> Вы упали без сил! Спасатели доставили вас домой и забрали половину золота. <<<\n");
-            p->gold = p->gold / 2;
-            p->stamina = p->max_stamina;
-            p->hp = p->max_hp;
-            t->current_hour = 8; 
-            t->current_day++;
-            break; 
-        }
-        if (m->grid[p->y][p->x] == TILE_EXIT) {
-            m->current_floor++;
-            t->current_hour += 1; 
-            p->stamina -= 5;      
-            int reward = 10 * m->current_floor; 
-            
-            if (p->lantern.mode == LIGHT_BRIGHT) {
-                reward = (int)(reward * 1.5);
-                printf("\n>>> Яркий свет фонаря помог найти тайник! Золото увеличено на 50%%! <<<\n");
-            }
-            
-            p->gold += reward;
-            printf("\n>>> Вы спустились на этаж %d! Получено %d золота. <<<\n", m->current_floor, reward);
-            
-            free_map(m);
-            m = create_map(MAP_HEIGHT, MAP_WIDTH, m->current_floor); // Тут маленькая хитрость: current_floor передается при создании
-            p->x = 1;
-            p->y = 1;
-            
-            printf("Нажмите Enter для продолжения...");
-            while (getchar() != '\n');
+        update_player_action(p, m, action, last_event);
+        
+        if (p->hp <= 0 || p->stamina <= 0) {
+            printf("\n>>> Вы упали без сил! <<<\n");
+            break;
         }
 
     } while (1);
-
+    
     free_map(m);
     printf("\nНажмите Enter для возврата в меню...");
     while (getchar() != '\n');
