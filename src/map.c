@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "map.h"
 #include "utils.h"
 #include "entity.h"
@@ -85,12 +86,9 @@ void slide_on_ice(Map *m, Player *p, char direction) {
         if (new_y < 0 || new_y >= m->height || new_x < 0 || new_x >= m->width || 
             m->grid[new_y][new_x] == TILE_WALL) {
             break;  
-        }
-        
-        
+        }        
         p->y = new_y;
         p->x = new_x;
-        
         if (m->grid[p->y][p->x] == TILE_EMPTY) {
             break;
         }
@@ -135,19 +133,20 @@ void generate_entities(Map *m, int floor) {
     m->max_entities = (total_cells * 40) / 100 + 10;
     m->entities = (Entity*)malloc(m->max_entities * sizeof(Entity));
     m->entity_count = 0;
-    int mult = 1 + (floor / 2);
+    int mult = 1 + (floor + 1) / 2;
     int target_trees = total_cells * 0.15;
     for (int i = 0; i < target_trees; i++) {
         int y = 1 + rand() % (m->height - 2);
         int x = 1 + rand() % (m->width - 2);
-        if (m->grid[y][x] == '.') {
+        // Не ставим ресурс прямо на игрока
+        if (m->grid[y][x] == '.' && (x != 1 || y != 1)) {
             Entity e;
             e.type = ENT_TREE;
-            e.symbol = 'T';
+            e.symbol = TILE_TREE;
             e.x = x; e.y = y;
             e.max_hp = 10 * mult; e.hp = e.max_hp;
             e.attack = 0; e.defense = 0;
-            e.drop_item_id = 1; 
+            e.drop_item_id = 1;
             e.is_alive = 1;
             add_entity(m, e);
         }
@@ -156,10 +155,10 @@ void generate_entities(Map *m, int floor) {
     for (int i = 0; i < target_rocks; i++) {
         int y = 1 + rand() % (m->height - 2);
         int x = 1 + rand() % (m->width - 2);
-        if (m->grid[y][x] == '.') {
+        if (m->grid[y][x] == '.' && (x != 1 || y != 1)) {
             Entity e;
             e.type = ENT_ROCK;
-            e.symbol = 'R'; 
+            e.symbol = TILE_STONE;
             e.x = x; e.y = y;
             e.max_hp = 20 * mult; e.hp = e.max_hp;
             e.attack = 0; e.defense = 0;
@@ -172,7 +171,7 @@ void generate_entities(Map *m, int floor) {
     for (int i = 0; i < target_heals; i++) {
         int y = 1 + rand() % (m->height - 2);
         int x = 1 + rand() % (m->width - 2);
-        if (m->grid[y][x] == '.') {
+        if (m->grid[y][x] == '.' && (x != 1 || y != 1)) {
             Entity e;
             e.type = ENT_HEAL;
             e.symbol = '+';
@@ -263,17 +262,31 @@ void render_map(const Map *m, const Player *p, const GameTime *t, const char *la
         printf("\n");
     }
 }
+
+Entity* get_entity_at(const Map *m, int x, int y) {
+    for (int i = 0; i < m->entity_count; i++) {
+        if (m->entities[i].is_alive && m->entities[i].x == x && m->entities[i].y == y) {
+            return &m->entities[i];
+        }
+    }
+    return NULL;
+}
+
 int can_move(const Map *m, int new_y, int new_x) {
     if (new_y < 0 || new_y >= m->height || new_x < 0 || new_x >= m->width) {
-        return 0; 
+        return 0;
     }
-    if (m->grid[new_y][new_x] == TILE_WALL || 
-    m->grid[new_y][new_x] == TILE_TREE || 
-    m->grid[new_y][new_x] == TILE_STONE) {
-    return 0; 
-        } 
-    return 1;  
+    // Проверяем, не стена ли клетка
+    if (m->grid[new_y][new_x] == TILE_WALL) {
+        return 0;
     }
+    // Проверяем, нет ли живой сущности на клетке (ресурс/монстр/аптечка)
+    if (get_entity_at(m, new_x, new_y) != NULL) {
+        return 0;
+    }
+    return 1;
+}
+
 void update_player_action(Player *p, Map *m, char action, char *last_event, int *collected, int *killed) {
     int nx = p->x;
     int ny = p->y;
@@ -287,33 +300,42 @@ void update_player_action(Player *p, Map *m, char action, char *last_event, int 
     Entity *target = get_entity_at(m, nx, ny);
 
     if (target != NULL) {
+        p->stamina -= 2;
+        if (p->stamina < 0) p->stamina = 0;
+
         if (target->type == ENT_HEAL) {
-            p->hp += 20; 
+            p->hp += 20;
             if (p->hp > p->max_hp) p->hp = p->max_hp;
-            p->stamina += 10; 
+            p->stamina += 10;
             if (p->stamina > p->max_stamina) p->stamina = p->max_stamina;
-            
-            target->is_alive = 0; 
+
+            target->is_alive = 0;
+            m->grid[target->y][target->x] = TILE_EMPTY;
+            // По ТЗ герой перемещается на клетку аптечки
+            p->x = nx;
+            p->y = ny;
             sprintf(last_event, "Вы собрали аптечку! (+20 HP, +10 стамины)");
-            
+
         } else if (target->type == ENT_TREE || target->type == ENT_ROCK) {
             int dmg = p->attack - (target->defense / 2);
             if (dmg < 1) dmg = 1;
-            
+
             target->hp -= dmg;
-            
+
             if (target->hp <= 0) {
                 target->is_alive = 0;
+                m->grid[target->y][target->x] = TILE_EMPTY;
                 int slot = -1;
                 for (int i = 0; i < MAX_ITEMS; i++) {
-                    if (p->inventory[i] == ITEM_EMPTY) { 
+                    if (p->inventory[i] == ITEM_EMPTY) {
                         slot = i; break;
                     }
                 }
-                
+
                 if (slot != -1) {
                     p->inventory[slot] = target->drop_item_id;
-                    sprintf(last_event, "Вы разрушили объект и получили: %s!", get_item_name(target->drop_item_id));
+                    (*collected)++;
+                    sprintf(last_event, "Вы разрубили объект и получили: %s!", get_item_name(target->drop_item_id));
                 } else {
                     sprintf(last_event, "Рюкзак полон! Ресурс пропал.");
                 }
@@ -321,24 +343,49 @@ void update_player_action(Player *p, Map *m, char action, char *last_event, int 
                 sprintf(last_event, "Вы ударили объект на %d урона. (Осталось: %d)", dmg, target->hp);
             }
             
-        } else if (target->type == ENT_MONSTER) {
-            p->stamina -= 2; 
+                } else if (target->type == ENT_MONSTER) {
+            // Стамина (2 ед.) уже списана выше, второй раз не списываем
             int dmg = p->attack - (target->defense / 2);
             if (dmg < 1) dmg = 1;
             target->hp -= dmg;
-            
+
             if (target->hp <= 0) {
                 target->is_alive = 0;
+                m->grid[target->y][target->x] = TILE_EMPTY; // монстр исчезает с карты
+                (*killed)++; // Счетчик убитых монстров
+                
+                // 1. Начисляем золото
                 int reward_gold = 10 * m->current_floor;
                 p->gold += reward_gold;
-                sprintf(last_event, "Вы победили монстра! Получено %d золота.", reward_gold);
+                
+                if (rand() % 100 < 30) {
+                    int slot = -1;
+                    for (int i = 0; i < MAX_ITEMS; i++) {
+                        if (p->inventory[i] == ITEM_EMPTY) { 
+                            slot = i; break;
+                        }
+                    }
+                    
+                    if (slot != -1) {
+                        int trophy_id = (rand() % 9) + 1; 
+                        p->inventory[slot] = trophy_id;
+                        sprintf(last_event, "Вы победили монстра! +%d золота. Трофей: %s!", reward_gold, get_item_name(trophy_id));
+                    } else {
+                        sprintf(last_event, "Вы победили монстра! +%d золота. Рюкзак полон, трофей утерян.", reward_gold);
+                    }
+                } else {
+
+                    sprintf(last_event, "Вы победили монстра! Получено %d золота.", reward_gold);
+                }
             } else {
                 sprintf(last_event, "Вы ударили монстра на %d урона. (Осталось HP: %d)", dmg, target->hp);
             }
         }
         
     } else {
-        if (can_move(m, nx, ny)) {
+        if (can_move(m, ny, nx)) {   // сигнатура: can_move(m, y, x)
+            p->stamina -= 1;
+            if (p->stamina < 0) p->stamina = 0;
             p->x = nx;
             p->y = ny;
             sprintf(last_event, "Вы сделали шаг.");
@@ -393,7 +440,15 @@ void make_step(Player *p, Map *m, char action) {
         printf("Туда нельзя идти! (Стена)\n");
     }
 }
+#define EVENT_SIZE 256
+// Дописывает сообщение к событию игрока (не затирает его), с защитой от переполнения
+static void append_event(char *ev, const char *msg) {
+    size_t len = strlen(ev);
+    if (len >= EVENT_SIZE - 1) return;
+    snprintf(ev + len, EVENT_SIZE - len, "%s%s", len ? " | " : "", msg);
+}
 void update_monsters(Map *m, Player *p, char *last_event) {
+    char buf[96];
     for (int i = 0; i < m->entity_count; i++) {
         if (m->entities[i].is_alive && m->entities[i].type == ENT_MONSTER) {
             Entity *e = &m->entities[i];
@@ -403,7 +458,8 @@ void update_monsters(Map *m, Player *p, char *last_event) {
                 int dmg = e->attack - (p->defense / 2);
                 if (dmg < 1) dmg = 1;
                 p->hp -= dmg;
-                sprintf(last_event, "Монстр нанес вам %d урона!", dmg);
+                snprintf(buf, sizeof(buf), "Монстр нанес вам %d урона!", dmg);
+                append_event(last_event, buf);
             } else {
                 int dir = rand() % 4;
                 int nx = e->x, ny = e->y;
@@ -412,18 +468,22 @@ void update_monsters(Map *m, Player *p, char *last_event) {
                 else if (dir == 1) ny++;
                 else if (dir == 2) nx--;
                 else if (dir == 3) nx++;
-                
-                if (m->grid[ny][nx] == '.' || (nx == p->x && ny == p->y)) {
-                    if (nx == p->x && ny == p->y) {
-                        int dmg = e->attack - (p->defense / 2);
-                        if (dmg < 1) dmg = 1;
-                        p->hp -= dmg;
-                        sprintf(last_event, "Монстр набросился на вас и нанес %d урона!", dmg);
-                    } else {
-                        e->x = nx;
-                        e->y = ny;
-                    }
-                }
+            if (nx == p->x && ny == p->y) {
+                int dmg = e->attack - (p->defense / 2);
+                if (dmg < 1) dmg = 1;
+                p->hp -= dmg;
+                snprintf(buf, sizeof(buf), "Монстр набросился на вас и нанес %d урона!", dmg);
+                append_event(last_event, buf);
+            } 
+
+            else if (m->grid[ny][nx] == TILE_EMPTY) {
+                m->grid[e->y][e->x] = TILE_EMPTY; 
+                e->x = nx;
+                e->y = ny;
+                m->grid[e->y][e->x] = e->symbol; 
+            } 
+            else {
+            }
             }
         }
     }
@@ -452,15 +512,15 @@ void start_adventure(Player *p, GameTime *t) {
     p->x = 1; p->y = 1;
     
     char action;
-    char last_event[128] = "Вы вошли в подземелье!";
+    char last_event[EVENT_SIZE] = "Вы вошли в подземелье!";
     
     int collected_resources = 0;
     int killed_monsters = 0;
     int is_dead = 0; 
 
     do {
-        render_map(m, p, t, last_event); 
-        
+        render_map(m, p, t, last_event);
+
         printf("\n(W/A/S/D - действие, F - фонарь, Q - выход): ");
         action = get_action(); 
         
@@ -475,6 +535,13 @@ void start_adventure(Player *p, GameTime *t) {
             } else {
                 strcpy(last_event, "Нет масла, чтобы зажечь!");
             }
+            continue;
+        }
+
+        // Неизвестная клавиша — ход не тратится, монстры не ходят
+        if (!(action == 'W' || action == 'w' || action == 'A' || action == 'a' ||
+              action == 'S' || action == 's' || action == 'D' || action == 'd')) {
+            strcpy(last_event, "Неизвестная команда.");
             continue;
         }
 

@@ -49,7 +49,7 @@ Player* create_player(void) {
     p->x = 0;
     p->y = 0;
     p->attack = 5;
-    p->defendes = 2;
+    p->defense = 2;
     for (int i = 0; i < MAX_ITEMS; i++) {
         p->inventory[i] = 0; 
     }
@@ -79,6 +79,8 @@ void print_player_card(const Player *p, const GameTime *t) {
     printf("HP (Здоровье):    %d / %d\n", p->hp, p->max_hp);
     printf("Выносливость:     %d / %d\n", p->stamina, p->max_stamina);
     printf("Золото:           %d монет\n", p->gold);
+    printf("Атака:            %d\n", p->attack);
+    printf("Защита:           %d\n", p->defense);
 
     // Состояние фонаря (наш вариант 7)
     printf("Фонарь:           масло %d/%d, режим: ", p->lantern.oil, MAX_OIL);
