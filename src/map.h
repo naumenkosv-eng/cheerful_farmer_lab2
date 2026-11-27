@@ -28,6 +28,7 @@ typedef struct {
 Map* create_map(int height, int width, int floor);
 void free_map(Map *m);
 void draw_map(const Map *m, int player_y, int player_x);
+int can_move(const Map *m, int new_y, int new_x);
 void start_adventure(Player *p, GameTime *t);
 
 #endif 

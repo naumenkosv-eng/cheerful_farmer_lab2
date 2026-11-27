@@ -1,8 +1,23 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "map.h"
 #include "utils.h"
 #include "entity.h"
+
+// Возвращает указатель на живую сущность в клетке (y; x) или NULL.
+static Entity* get_entity_at(const Map *m, int y, int x) {
+    for (int i = 0; i < m->entity_count; i++) {
+        if (m->entities[i].is_alive &&
+            m->entities[i].x == x && m->entities[i].y == y) {
+            return &m->entities[i];
+        }
+    }
+    return NULL;
+}
+
+
+// Возвращает указатель на живого монстра в клетке (y; x) или NULL.
 
 void free_map(Map *m) {
     if (m == NULL) return;
@@ -83,7 +98,8 @@ void slide_on_ice(Map *m, Player *p, char direction) {
         int new_x = p->x + dx;
         
         if (new_y < 0 || new_y >= m->height || new_x < 0 || new_x >= m->width || 
-            m->grid[new_y][new_x] == TILE_WALL) {
+            m->grid[new_y][new_x] == TILE_WALL ||
+            get_entity_at(m, new_y, new_x) != NULL) {
             break;  
         }
         
@@ -265,14 +281,18 @@ void render_map(const Map *m, const Player *p, const GameTime *t, const char *la
 }
 int can_move(const Map *m, int new_y, int new_x) {
     if (new_y < 0 || new_y >= m->height || new_x < 0 || new_x >= m->width) {
-        return 0; 
+        return 0;
     }
-    if (m->grid[new_y][new_x] == TILE_WALL || 
-    m->grid[new_y][new_x] == TILE_TREE || 
-    m->grid[new_y][new_x] == TILE_STONE) {
-    return 0; 
-        } 
-    return 1;  
+    // Стена блокирует проход
+    if (m->grid[new_y][new_x] == TILE_WALL) {
+        return 0;
+    }
+    // Живые сущности (деревья, камни, монстры) блокируют проход,
+    // пока не будут уничтожены. Уничтоженные — свободны для ходьбы.
+    if (get_entity_at(m, new_y, new_x) != NULL) {
+        return 0;
+    }
+    return 1;
     }
 void update_player_action(Player *p, Map *m, char action, char *last_event, int *collected, int *killed) {
     int nx = p->x;
@@ -284,7 +304,15 @@ void update_player_action(Player *p, Map *m, char action, char *last_event, int 
     else if (action == 'D' || action == 'd') nx++;
     else return; 
 
-    Entity *target = get_entity_at(m, nx, ny);
+    // Проверяем живых сущностей (деревья T, камни R, аптечки +, монстры M) в клетке
+    Entity *target = NULL;
+    for (int i = 0; i < m->entity_count; i++) {
+        if (m->entities[i].is_alive &&
+            m->entities[i].x == nx && m->entities[i].y == ny) {
+            target = &m->entities[i];
+            break;
+        }
+    }
 
     if (target != NULL) {
         if (target->type == ENT_HEAL) {
@@ -304,6 +332,7 @@ void update_player_action(Player *p, Map *m, char action, char *last_event, int 
             
             if (target->hp <= 0) {
                 target->is_alive = 0;
+                (*collected)++;
                 int slot = -1;
                 for (int i = 0; i < MAX_ITEMS; i++) {
                     if (p->inventory[i] == ITEM_EMPTY) { 
@@ -329,6 +358,7 @@ void update_player_action(Player *p, Map *m, char action, char *last_event, int 
             
             if (target->hp <= 0) {
                 target->is_alive = 0;
+                (*killed)++;
                 int reward_gold = 10 * m->current_floor;
                 p->gold += reward_gold;
                 sprintf(last_event, "Вы победили монстра! Получено %d золота.", reward_gold);
@@ -413,16 +443,18 @@ void update_monsters(Map *m, Player *p, char *last_event) {
                 else if (dir == 2) nx--;
                 else if (dir == 3) nx++;
                 
-                if (m->grid[ny][nx] == '.' || (nx == p->x && ny == p->y)) {
-                    if (nx == p->x && ny == p->y) {
-                        int dmg = e->attack - (p->defense / 2);
-                        if (dmg < 1) dmg = 1;
-                        p->hp -= dmg;
-                        sprintf(last_event, "Монстр набросился на вас и нанес %d урона!", dmg);
-                    } else {
-                        e->x = nx;
-                        e->y = ny;
-                    }
+                // Выход за границы карты монстрам запрещён
+                if (nx < 0 || nx >= m->width || ny < 0 || ny >= m->height) continue;
+
+                if (m->grid[ny][nx] == '.' && get_entity_at(m, ny, nx) == NULL) {
+                    e->x = nx;
+                    e->y = ny;
+                } else if (nx == p->x && ny == p->y) {
+                    // Монстр сам шагает на клетку игрока — наносит удар!
+                    int dmg = e->attack - (p->defense / 2);
+                    if (dmg < 1) dmg = 1;
+                    p->hp -= dmg;
+                    sprintf(last_event, "Монстр набросился на вас и нанес %d урона!", dmg);
                 }
             }
         }
