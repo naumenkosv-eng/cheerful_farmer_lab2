@@ -274,7 +274,7 @@ int can_move(const Map *m, int new_y, int new_x) {
         } 
     return 1;  
     }
-void update_player_action(Player *p, Map *m, char action, char *last_event) {
+void update_player_action(Player *p, Map *m, char action, char *last_event, int *collected, int *killed) {
     int nx = p->x;
     int ny = p->y;
 
@@ -428,23 +428,43 @@ void update_monsters(Map *m, Player *p, char *last_event) {
         }
     }
 }
+void log_adventure(const Player *p, const GameTime *t, int floor, int collected, int killed, int is_dead) {
+    FILE *f = fopen("diary.txt", "a");
+    if (f == NULL) {
+        printf("Ошибка: не удалось открыть diary.txt для записи!\n");
+        return;
+    }
+    
+    fprintf(f, "=== ОТЧЕТ О ПОХОДЕ ===\n");
+    fprintf(f, "День: %d, Время: %02d:00\n", t->current_day, t->current_hour);
+    fprintf(f, "Достигнутый этаж: %d\n", floor);
+    fprintf(f, "Статус: %s\n", is_dead ? "Экстренная эвакуация (Обморок)" : "Успешное возвращение");
+    fprintf(f, "Добыто ресурсов: %d\n", collected);
+    fprintf(f, "Побеждено монстров: %d\n", killed);
+    fprintf(f, "Остаток золота: %d\n", p->gold);
+    fprintf(f, "======================\n\n");
+    
+    fclose(f);
+    printf("\n>>> Отчет о походе сохранен в diary.txt! <<<\n");
+}
 void start_adventure(Player *p, GameTime *t) {
     Map *m = create_map(MAP_HEIGHT, MAP_WIDTH, 1);
     p->x = 1; p->y = 1;
     
     char action;
-    char last_event[128] = "Вы вошли в подземелье!"; 
+    char last_event[128] = "Вы вошли в подземелье!";
+    
+    int collected_resources = 0;
+    int killed_monsters = 0;
+    int is_dead = 0; 
 
     do {
         render_map(m, p, t, last_event); 
         
-    
         printf("\n(W/A/S/D - действие, F - фонарь, Q - выход): ");
         action = get_action(); 
         
-        if (action == 'Q' || action == 'q') {
-            break;
-        }
+        if (action == 'Q' || action == 'q') break;
         
         if (action == 'F' || action == 'f') {
             printf("\nВыберите режим фонаря (0-Выкл, 1-Обычный, 2-Яркий): ");
@@ -457,15 +477,29 @@ void start_adventure(Player *p, GameTime *t) {
             }
             continue;
         }
-        update_player_action(p, m, action, last_event);
+
+        update_player_action(p, m, action, last_event, &collected_resources, &killed_monsters);
+        
         update_monsters(m, p, last_event);
         
         if (p->hp <= 0 || p->stamina <= 0) {
-            printf("\n>>> Вы упали без сил! <<<\n");
-            break;
+            printf("\n>>> Вы упали без сил! Спасатели доставили вас домой. <<<\n");
+            printf(">>> Вы потеряли половину золота! <<<\n");
+            
+            p->gold = p->gold / 2;         
+            p->hp = p->max_hp;             
+            p->stamina = p->max_stamina;   
+            
+            t->current_hour = 8;           
+            t->current_day++;
+            
+            is_dead = 1; 
+            break; 
         }
 
     } while (1);
+    
+    log_adventure(p, t, m->current_floor, collected_resources, killed_monsters, is_dead);
     
     free_map(m);
     printf("\nНажмите Enter для возврата в меню...");
