@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include "map.h"
 #include "utils.h"
+#include "entity.h"
 
 void free_map(Map *m) {
     if (m == NULL) return;
@@ -215,13 +216,6 @@ Map* create_map(int height, int width, int floor) {
             m->grid[i][j] = TILE_EMPTY;
         }
     }
-    m->grid = (char**)malloc(height * sizeof(char*));
-    for (int i = 0; i < height; i++) {
-        m->grid[i] = (char*)malloc(width * sizeof(char));
-        for (int j = 0; j < width; j++) {
-            m->grid[i][j] = '.';
-        }
-    }
     place_walls_and_stairs(m);
     generate_ice(m);   
     generate_entities(m, floor);
@@ -280,31 +274,26 @@ int can_move(const Map *m, int new_y, int new_x) {
         } 
     return 1;  
     }
-// map.c
 void update_player_action(Player *p, Map *m, char action, char *last_event) {
     int nx = p->x;
     int ny = p->y;
 
-    // 1. Определяем, куда хочет шагнуть игрок
     if (action == 'W' || action == 'w') ny--;
     else if (action == 'S' || action == 's') ny++;
     else if (action == 'A' || action == 'a') nx--;
     else if (action == 'D' || action == 'd') nx++;
-    else return; // Если нажали что-то другое, ничего не делаем
+    else return; 
 
-    // 2. Ищем, что находится на целевой клетке
     Entity *target = get_entity_at(m, nx, ny);
 
     if (target != NULL) {
-        // --- ВЗАИМОДЕЙСТВИЕ С СУЩНОСТЬЮ ---
         if (target->type == ENT_HEAL) {
-            // Сбор аптечки
             p->hp += 20; 
             if (p->hp > p->max_hp) p->hp = p->max_hp;
             p->stamina += 10; 
             if (p->stamina > p->max_stamina) p->stamina = p->max_stamina;
             
-            target->is_alive = 0; // Аптечка исчезает
+            target->is_alive = 0; 
             sprintf(last_event, "Вы собрали аптечку! (+20 HP, +10 стамины)");
             
         } else if (target->type == ENT_TREE || target->type == ENT_ROCK) {
@@ -331,15 +320,29 @@ void update_player_action(Player *p, Map *m, char action, char *last_event) {
             } else {
                 sprintf(last_event, "Вы ударили объект на %d урона. (Осталось: %d)", dmg, target->hp);
             }
+            
         } else if (target->type == ENT_MONSTER) {
-            sprintf(last_event, "Вы замахнулись на монстра, но он увернулся! (Бой будет на Этапе 5)");
+            p->stamina -= 2; 
+            int dmg = p->attack - (target->defense / 2);
+            if (dmg < 1) dmg = 1;
+            target->hp -= dmg;
+            
+            if (target->hp <= 0) {
+                target->is_alive = 0;
+                int reward_gold = 10 * m->current_floor;
+                p->gold += reward_gold;
+                sprintf(last_event, "Вы победили монстра! Получено %d золота.", reward_gold);
+            } else {
+                sprintf(last_event, "Вы ударили монстра на %d урона. (Осталось HP: %d)", dmg, target->hp);
+            }
         }
-
+        
     } else {
         if (can_move(m, nx, ny)) {
             p->x = nx;
             p->y = ny;
             sprintf(last_event, "Вы сделали шаг.");
+            
             if (m->grid[p->y][p->x] == '~') {
                 slide_on_ice(m, p, action);
                 strcat(last_event, " Вы поскользнулись на льду!");
@@ -390,6 +393,41 @@ void make_step(Player *p, Map *m, char action) {
         printf("Туда нельзя идти! (Стена)\n");
     }
 }
+void update_monsters(Map *m, Player *p, char *last_event) {
+    for (int i = 0; i < m->entity_count; i++) {
+        if (m->entities[i].is_alive && m->entities[i].type == ENT_MONSTER) {
+            Entity *e = &m->entities[i];
+            int dist = abs(e->x - p->x) + abs(e->y - p->y);
+            
+            if (dist == 1) {
+                int dmg = e->attack - (p->defense / 2);
+                if (dmg < 1) dmg = 1;
+                p->hp -= dmg;
+                sprintf(last_event, "Монстр нанес вам %d урона!", dmg);
+            } else {
+                int dir = rand() % 4;
+                int nx = e->x, ny = e->y;
+                
+                if (dir == 0) ny--;
+                else if (dir == 1) ny++;
+                else if (dir == 2) nx--;
+                else if (dir == 3) nx++;
+                
+                if (m->grid[ny][nx] == '.' || (nx == p->x && ny == p->y)) {
+                    if (nx == p->x && ny == p->y) {
+                        int dmg = e->attack - (p->defense / 2);
+                        if (dmg < 1) dmg = 1;
+                        p->hp -= dmg;
+                        sprintf(last_event, "Монстр набросился на вас и нанес %d урона!", dmg);
+                    } else {
+                        e->x = nx;
+                        e->y = ny;
+                    }
+                }
+            }
+        }
+    }
+}
 void start_adventure(Player *p, GameTime *t) {
     Map *m = create_map(MAP_HEIGHT, MAP_WIDTH, 1);
     p->x = 1; p->y = 1;
@@ -409,7 +447,6 @@ void start_adventure(Player *p, GameTime *t) {
         }
         
         if (action == 'F' || action == 'f') {
-            // Логика фонаря
             printf("\nВыберите режим фонаря (0-Выкл, 1-Обычный, 2-Яркий): ");
             int l_choice = read_int_safe("", 0, 2);
             if (p->lantern.oil > 0 || l_choice == 0) {
@@ -421,6 +458,7 @@ void start_adventure(Player *p, GameTime *t) {
             continue;
         }
         update_player_action(p, m, action, last_event);
+        update_monsters(m, p, last_event);
         
         if (p->hp <= 0 || p->stamina <= 0) {
             printf("\n>>> Вы упали без сил! <<<\n");
