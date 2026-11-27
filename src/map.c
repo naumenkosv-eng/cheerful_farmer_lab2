@@ -1,8 +1,21 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "map.h"
 #include "utils.h"
 #include "entity.h"
+
+// Возвращает указатель на живого монстра в клетке (y; x) или NULL.
+static Entity* get_monster_at(const Map *m, int y, int x) {
+    for (int i = 0; i < m->entity_count; i++) {
+        if (m->entities[i].is_alive &&
+            m->entities[i].type == ENT_MONSTER &&
+            m->entities[i].x == x && m->entities[i].y == y) {
+            return &m->entities[i];
+        }
+    }
+    return NULL;
+}
 
 void free_map(Map *m) {
     if (m == NULL) return;
@@ -284,7 +297,15 @@ void update_player_action(Player *p, Map *m, char action, char *last_event, int 
     else if (action == 'D' || action == 'd') nx++;
     else return; 
 
-    Entity *target = get_entity_at(m, nx, ny);
+    // Проверяем живых сущностей (деревья T, камни R, аптечки +, монстры M) в клетке
+    Entity *target = NULL;
+    for (int i = 0; i < m->entity_count; i++) {
+        if (m->entities[i].is_alive &&
+            m->entities[i].x == nx && m->entities[i].y == ny) {
+            target = &m->entities[i];
+            break;
+        }
+    }
 
     if (target != NULL) {
         if (target->type == ENT_HEAL) {
@@ -304,6 +325,7 @@ void update_player_action(Player *p, Map *m, char action, char *last_event, int 
             
             if (target->hp <= 0) {
                 target->is_alive = 0;
+                (*collected)++;
                 int slot = -1;
                 for (int i = 0; i < MAX_ITEMS; i++) {
                     if (p->inventory[i] == ITEM_EMPTY) { 
@@ -329,6 +351,7 @@ void update_player_action(Player *p, Map *m, char action, char *last_event, int 
             
             if (target->hp <= 0) {
                 target->is_alive = 0;
+                (*killed)++;
                 int reward_gold = 10 * m->current_floor;
                 p->gold += reward_gold;
                 sprintf(last_event, "Вы победили монстра! Получено %d золота.", reward_gold);
@@ -413,7 +436,10 @@ void update_monsters(Map *m, Player *p, char *last_event) {
                 else if (dir == 2) nx--;
                 else if (dir == 3) nx++;
                 
-                if (m->grid[ny][nx] == '.' || (nx == p->x && ny == p->y)) {
+                // Выход за границы карты монстрам запрещён
+                if (nx < 0 || nx >= m->width || ny < 0 || ny >= m->height) continue;
+
+                if ((m->grid[ny][nx] == '.' && get_monster_at(m, ny, nx) == NULL) || (nx == p->x && ny == p->y)) {
                     if (nx == p->x && ny == p->y) {
                         int dmg = e->attack - (p->defense / 2);
                         if (dmg < 1) dmg = 1;

@@ -49,7 +49,7 @@ Player* create_player(void) {
     p->x = 0;
     p->y = 0;
     p->attack = 5;
-    p->defendes = 2;
+    p->defense = 2;
     for (int i = 0; i < MAX_ITEMS; i++) {
         p->inventory[i] = 0; 
     }
